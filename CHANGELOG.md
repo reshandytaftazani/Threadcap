@@ -4,6 +4,10 @@ This file summarizes implemented releases. Detailed verification records remain 
 
 ## Unreleased
 
+- Organize guides, architecture, integrations, verification records, and historical plans into dedicated documentation folders. Separate active CLI observers, test suites, build tools, preview pages, and legacy prototypes; update imports and build references together.
+- Add standard `dev`/`build` tasks and full provider names in task commands, with documented desktop compatibility aliases.
+- Put the shell-test receiver back into blocking mode after nonblocking accept, retaining its bounded read timeout.
+
 - Prepare the Threadcap repository for publication with MIT licensing, user-oriented documentation, contributor/security guidance, GitHub templates, and source-package checks.
 - Allow up to one second for short SQLite cache write contention after a clean GitHub runner exposed dropped concurrent hook writes; retain the concurrency test and add a held-lock regression.
 
@@ -15,7 +19,7 @@ This file summarizes implemented releases. Detailed verification records remain 
 - Recover legacy local OpenCode rows only after a complete zero-client census; migrate previously confirmed ended context once.
 - Preserve OpenCode plugins/settings during registration, including UTF-8 BOM configurations.
 
-See [closure behavior and verification](docs/client-closure.md).
+See [closure behavior and verification](docs/verification/releases/v0.8.4-client-closure.md).
 
 ## 0.8.3
 
@@ -23,14 +27,14 @@ See [closure behavior and verification](docs/client-closure.md).
 - Add OpenCode 2.3.0 registration support.
 - Observe Antigravity account quota through the official status line while forwarding existing output and preserving preferences.
 
-See [provider monitoring repairs](docs/provider-monitoring-repair.md).
+See [provider monitoring repairs](docs/verification/releases/v0.8.3-provider-monitoring.md).
 
 ## 0.8.2
 
 - Refresh existing managed observer binaries at startup without rewriting hooks.
 - Recover PID-less legacy Antigravity rows only after confirmed native process absence.
 
-See [upgrade recovery](docs/antigravity-upgrade-recovery.md).
+See [upgrade recovery](docs/verification/releases/v0.8.2-observer-upgrade.md).
 
 ## 0.8.1
 
@@ -42,4 +46,4 @@ See [upgrade recovery](docs/antigravity-upgrade-recovery.md).
 - Add native Orca pane observation, restart recovery, provider Connect flows, clearer Archive/Back navigation, and stronger pixel controls/state companions.
 - Introduce configurable closed-pane retention, superseded by 0.8.4's confirmed-closure policy.
 
-See [the revision implementation report](docs/threadcap-implementation.md).
+See [the revision implementation report](docs/verification/releases/v0.8.0.md).

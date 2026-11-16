@@ -5,8 +5,8 @@
   "identifier": "app.vibeisland.windows",
   "build": {
     "frontendDist": "../src",
-    "beforeDevCommand": "node scripts/build-codex-bridge.cjs",
-    "beforeBuildCommand": "node scripts/build-codex-bridge.cjs"
+    "beforeDevCommand": "node scripts/build/codex-bridge.cjs",
+    "beforeBuildCommand": "node scripts/build/codex-bridge.cjs"
   },
   "app": {
     "withGlobalTauri": true,

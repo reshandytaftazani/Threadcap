@@ -30,12 +30,12 @@ jobs:
         run: npm run check:publication
       - name: Session model and Rust bridge tests
         run: npm test
-      - name: Codex adapter tests (no model calls)
-        run: npm run test:codex
+      - name: Provider observer tests (no model calls)
+        run: npm run test:bridge
       - name: Native unit tests and sidecar preparation
         run: npm run test:native
       - name: Build the bundled desktop installer
-        run: npm run desktop:build
+        run: npm run build
       - name: Stage portable release files
         run: npm run release:stage
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

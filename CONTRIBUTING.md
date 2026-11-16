@@ -1,6 +1,8 @@
 # Contributing to Threadcap
 
-Read [README.md](README.md), [current capabilities](docs/capabilities.md), and [AGENTS.md](AGENTS.md). For interface work, also read [design.md](design.md). Open an issue to discuss changes that alter provider contracts or user workflows.
+Read [README.md](README.md), [current capabilities](docs/guides/capabilities.md), and [AGENTS.md](AGENTS.md). For interface work, also read [design.md](design.md). Open an issue to discuss changes that alter provider contracts or user workflows.
+
+Use the [repository layout and naming guide](docs/development/repository-layout.md) when adding files. Keep native/provider checks out of build utilities and keep historical implementation records separate from current user guides.
 
 ## Development
 
@@ -8,7 +10,7 @@ On Windows x64, install Git, Node.js 24, MSVC Rust, Visual Studio C++ Build Tool
 
 ```powershell
 npm.cmd ci
-npm.cmd run desktop
+npm.cmd run dev
 ```
 
 Close the installed app before development mode, which uses the normal data/port by default. Never run the legacy Python bridge against the same live database alongside the native host.
@@ -16,15 +18,15 @@ Close the installed app before development mode, which uses the normal data/port
 ```powershell
 npm.cmd run check:publication
 npm.cmd test
-npm.cmd run test:codex
+npm.cmd run test:bridge
 npm.cmd run test:native
-npm.cmd run desktop:build
+npm.cmd run build
 npm.cmd run release:stage
 ```
 
-`test:native` compiles unit tests and the helper; it does not verify every real desktop interaction. Interactive CLI tests must be appropriate, use owned isolated fixtures, and must not submit model work merely to validate documentation. See [publishing](docs/publishing.md) for clean-source checks.
+`test:native` compiles unit tests and the helper; it does not verify every real desktop interaction. Interactive CLI tests must be appropriate, use owned isolated fixtures, and must not submit model work merely to validate documentation. See [publishing](docs/development/publishing.md) for clean-source checks.
 
-`test:codex` runs process/configuration fixtures one at a time to avoid unrelated cold PowerShell startup and disk contention on small Windows runners. Its concurrency fixture still launches twelve competing cache writers; serialization does not remove that assertion. The shell fixture allows 30 seconds for process startup, separately from the production adapter's unchanged bounded network timeouts.
+`test:bridge` runs process/configuration fixtures one at a time to avoid unrelated cold PowerShell startup and disk contention on small Windows runners. Its concurrency fixture still launches twelve competing cache writers; serialization does not remove that assertion. The shell fixture allows 30 seconds for process startup, separately from the production adapter's unchanged bounded network timeouts.
 
 For UI changes, record representative compact/hover/expanded/Settings states and relevant motion. Check keyboard access, focus/drafts, reduced motion, outside-click behavior, and interrupted transitions. Report the display scales, monitor configurations, and terminal hosts actually exercised.
 

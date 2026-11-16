@@ -386,6 +386,7 @@ fn verify_windows_command(unusual_path: bool, powershell: bool) {
                 Err(error) => panic!("Hook did not deliver: {error}"),
             }
         };
+        stream.set_nonblocking(false).unwrap();
         stream
             .set_read_timeout(Some(Duration::from_secs(2)))
             .unwrap();

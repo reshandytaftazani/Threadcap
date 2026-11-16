@@ -1,4 +1,4 @@
-/* Project pixel interpretations. Source provenance: docs/agent-icons.md. */
+/* Project pixel interpretations. Source provenance: docs/design/agent-icons.md. */
 (() => {
   'use strict';
   const names = { codex: 'Codex', antigravity: 'Antigravity', opencode: 'OpenCode', unknown: 'Agent' };

@@ -36,7 +36,7 @@ The package targets native Windows x64. Windows 10/11 are the intended platforms
 
 Registration does not prove live monitoring. Open a new session or generate fresh activity and check that it appears. Threadcap never grants Codex hook trust automatically. Version gates can reject an unverified CLI while preserving its configuration.
 
-See [setup and troubleshooting](docs/getting-started.md), [Codex setup](docs/codex-bridge.md), and [provider verification](docs/provider-monitoring-repair.md).
+See [setup and troubleshooting](docs/guides/getting-started.md), [Codex setup](docs/integrations/codex.md), and [provider verification](docs/verification/releases/v0.8.3-provider-monitoring.md).
 
 ## Everyday use
 
@@ -56,7 +56,7 @@ See [setup and troubleshooting](docs/getting-started.md), [Codex setup](docs/cod
 | Account quota | Read-only account snapshot | Official CLI status-line payload | Unavailable |
 | Approve or answer inside Threadcap | Unavailable | Unavailable | Unavailable |
 
-Quota is shared account information, not per-session progress. Account-to-session mapping remains unverified. Stale or unavailable data is labeled. Native pane navigation, live-provider checks, and fixtures have different verification scopes; see [current capabilities and evidence](docs/capabilities.md).
+Quota is shared account information, not per-session progress. Account-to-session mapping remains unverified. Stale or unavailable data is labeled. Native pane navigation, live-provider checks, and fixtures have different verification scopes; see [current capabilities and evidence](docs/guides/capabilities.md).
 
 ## Build from source
 
@@ -66,7 +66,7 @@ Install Git, Node.js 24, MSVC Rust, Visual Studio C++ Build Tools with a Windows
 git clone https://github.com/reshandytaftazani/Threadcap.git
 cd Threadcap
 npm.cmd ci
-npm.cmd run desktop
+npm.cmd run dev
 ```
 
 To test and create release files:
@@ -74,9 +74,9 @@ To test and create release files:
 ```powershell
 npm.cmd run check:publication
 npm.cmd test
-npm.cmd run test:codex
+npm.cmd run test:bridge
 npm.cmd run test:native
-npm.cmd run desktop:build
+npm.cmd run build
 npm.cmd run release:stage
 ```
 
@@ -86,14 +86,16 @@ Browser Preview is separate: run `npm.cmd run preview` with Python installed and
 
 ## Documentation and contributions
 
-- [Documentation index](docs/README.md) · [Changelog](CHANGELOG.md) · [Roadmap](docs/roadmap.md)
-- [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [Release preparation](docs/publishing.md)
-- [Design](design.md) · [Agent instructions](AGENTS.md) · [Native architecture](docs/native-desktop.md)
+The source is grouped into `src` (UI), `src-tauri` (Windows host), `crates` (Rust libraries), `integrations` (CLI observers), and `tests`. Historical prototypes live in `legacy`. See [repository layout and naming](docs/development/repository-layout.md).
+
+- [Documentation index](docs/README.md) · [Changelog](CHANGELOG.md) · [Roadmap](docs/development/roadmap.md)
+- [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [Release preparation](docs/development/publishing.md)
+- [Design](design.md) · [Agent instructions](AGENTS.md) · [Native architecture](docs/architecture/desktop.md)
 
 Bug reports should include the app/CLI versions, terminal host, reproduction steps, and a sanitized screenshot or log. Please remove prompts, tokens, account identifiers, and personal paths before sharing. Use the repository's issue templates for ordinary bugs; follow the security policy for vulnerabilities.
 
 ## License and acknowledgments
 
-Threadcap's original code and documentation use the [MIT license](LICENSE). Provider marks and third-party materials retain their own terms; see [third-party notices](THIRD_PARTY_NOTICES.md) and [icon provenance](docs/agent-icons.md). No provider endorsement is claimed.
+Threadcap's original code and documentation use the [MIT license](LICENSE). Provider marks and third-party materials retain their own terms; see [third-party notices](THIRD_PARTY_NOTICES.md) and [icon provenance](docs/design/agent-icons.md). No provider endorsement is claimed.
 
 [Vibe Island](https://github.com/vibeislandapp/vibe-island) informs the visual direction; [EchoIsland](https://github.com/FunplayAI/EchoIsland) informs Windows aggregation ideas. Reference-app proprietary assets are not redistributed.
