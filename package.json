@@ -1,0 +1,44 @@
+{
+  "name": "threadcap",
+  "version": "0.8.4",
+  "description": "Dynamic Island for AI coding agents on Windows",
+  "main": "src/index.html",
+  "scripts": {
+    "test": "node --test tests/session-model.test.cjs tests/presentation-policy.test.cjs tests/usage.test.cjs && cargo test --locked --manifest-path crates/island-core/Cargo.toml",
+    "check:publication": "node scripts/check-publication.cjs",
+    "test:legacy": "python -m unittest discover -s tests -p test_*.py",
+    "preview": "python -m http.server 4173 --bind 127.0.0.1 --directory src",
+    "start": "tauri dev",
+    "bridge:python": "python bridge/antigravity_bridge.py",
+    "desktop": "tauri dev",
+    "desktop:build": "tauri build",
+    "desktop:legacy": "powershell -ExecutionPolicy Bypass -File desktop/launch_island.ps1",
+    "test:rust": "cargo test --manifest-path crates/island-core/Cargo.toml",
+    "test:native": "node scripts/build-codex-bridge.cjs && cargo test --locked --manifest-path src-tauri/Cargo.toml",
+    "test:threadcap": "node scripts/check-threadcap-native.cjs",
+    "test:agy-exit": "node scripts/check-antigravity-exit-native.cjs",
+    "test:observer-upgrade": "node scripts/check-observer-upgrade-native.cjs",
+    "test:agy-usage": "node scripts/check-antigravity-usage-native.cjs",
+    "test:opencode-plugin": "node scripts/check-opencode-plugin.cjs",
+    "test:opencode-lifetime": "node scripts/check-opencode-lifetime-native.cjs",
+    "test:codex": "cargo test --locked --manifest-path crates/codex-bridge/Cargo.toml",
+    "build:codex": "node scripts/build-codex-bridge.cjs",
+    "icons:build": "tauri icon src/assets/island-app.svg --output src-tauri/icons",
+    "release:stage": "node scripts/stage-release.cjs",
+    "watch:agy": "powershell -ExecutionPolicy Bypass -File bridge/agy_watch.ps1"
+  },
+  "keywords": [
+    "dynamic-island",
+    "ai-agents",
+    "antigravity",
+    "opencode",
+    "codex",
+    "windows",
+    "threadcap"
+  ],
+  "author": "Threadcap contributors",
+  "license": "MIT",
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.4"
+  }
+}

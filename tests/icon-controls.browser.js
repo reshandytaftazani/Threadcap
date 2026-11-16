@@ -1,0 +1,46 @@
+(async () => {
+  const checks = [];
+  const add = (name, passed) => checks.push({ name, passed: Boolean(passed) });
+  const api = window.IslandPreview;
+  if (!api?.enabled) throw new Error('Open Preview first.');
+  api.stopTour(); api.showOverview();
+  for (const id of ['codex','antigravity','opencode']) {
+    const button = document.querySelector('.agent-picker button[data-agent=' + id + ']');
+    button.click(); add('Agent picker: ' + id, button.getAttribute('aria-pressed') === 'true');
+  }
+  const state = document.getElementById('state-picker');
+  state.value = 'waiting_input'; state.dispatchEvent(new Event('change', { bubbles: true }));
+  add('State picker changes the selected integration', api.snapshot().sessions.find((s) => s.agentId === 'opencode').status === 'waiting_input');
+  const beforeReplay = document.querySelector('.session .agent-avatar[data-agent=opencode]');
+  document.getElementById('replay-button').click();
+  add('Replay replaces only the selected state animation', beforeReplay !== document.querySelector('.session .agent-avatar[data-agent=opencode]'));
+  document.getElementById('view-button').click();
+  add('View control collapses the island', !api.snapshot().expanded);
+  document.getElementById('compact-view').click();
+  add('Compact opens the relevant focused request', api.snapshot().expanded && api.snapshot().focused);
+  document.getElementById('all-sessions-button').click();
+  add('Show all restores the full list', !api.snapshot().focused && [...document.querySelectorAll('.session')].every((s) => !s.hidden));
+  const previousMotion = api.snapshot().reducedMotion;
+  document.getElementById('motion-button').click();
+  add('Motion control pauses nonessential animation', api.snapshot().reducedMotion !== previousMotion);
+  document.getElementById('motion-button').click();
+  const previousBezel = document.body.classList.contains('bezel');
+  document.getElementById('bezel-button').click();
+  add('Bezel toggle changes the anchor treatment', document.body.classList.contains('bezel') !== previousBezel);
+  document.getElementById('bezel-button').click();
+  document.getElementById('settings-button').click();
+  add('Settings opens with all three recognizable marks', IslandPreview.snapshot().settingsOpen && document.querySelectorAll('#settings-integrations .brand-mark').length === 3);
+  const setting = document.getElementById('setting-motion');
+  setting.click();
+  add('Settings motion switch changes actual motion state', setting.checked === api.snapshot().reducedMotion);
+  setting.click();
+  document.getElementById('settings-back').click();
+  add('Settings back returns to sessions', !IslandPreview.snapshot().settingsOpen);
+  document.getElementById('follow-button').click();
+  add('Play starts the simulated state sequence', document.getElementById('follow-button').getAttribute('aria-pressed') === 'true');
+  document.getElementById('follow-button').click();
+  add('Play control stops the sequence', document.getElementById('follow-button').getAttribute('aria-pressed') === 'false');
+  document.getElementById('collapse-button').click();
+  add('Collapse returns to a keyboard-operable compact strip', !api.snapshot().expanded && !document.getElementById('compact-view').inert && document.getElementById('compact-view').tabIndex === 0);
+  return { passed: checks.filter((c) => c.passed).length, failed: checks.filter((c) => !c.passed), checks };
+})();

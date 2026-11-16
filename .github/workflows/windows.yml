@@ -1,0 +1,45 @@
+name: Windows checks and installer
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      CARGO_BUILD_JOBS: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Select the verified MSVC toolchain
+        run: rustup default 1.100.0-x86_64-pc-windows-msvc
+      - run: npm ci
+      - name: Publication files, local links, and sensitive-file checks
+        run: npm run check:publication
+      - name: Session model and Rust bridge tests
+        run: npm test
+      - name: Codex adapter tests (no model calls)
+        run: npm run test:codex
+      - name: Native unit tests and sidecar preparation
+        run: npm run test:native
+      - name: Build the bundled desktop installer
+        run: npm run desktop:build
+      - name: Stage portable release files
+        run: npm run release:stage
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: threadcap-windows-${{ github.ref_name }}
+          path: dist/*
+          if-no-files-found: error

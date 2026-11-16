@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Threadcap</title>
+  <link rel="stylesheet" href="island.css">
+  <script src="avatars.js" defer></script>
+  <script src="session-model.js" defer></script>
+  <script src="presentation-policy.js" defer></script>
+  <script src="desktop.js" defer></script>
+  <script src="usage.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body class="bezel">
+  <main class="island-anchor">
+    <section id="island-surface" class="island-surface" data-expanded="false" data-focused="false" aria-label="Agent sessions">
+      <button id="compact-view" class="compact-view" aria-label="Expand sessions" aria-expanded="true" tabindex="-1" inert>
+        <span id="compact-avatars" class="compact-avatars"></span>
+        <span id="compact-title" class="compact-title">Idle</span>
+        <span id="compact-usage" class="compact-usage"></span>
+        <span id="compact-status" class="compact-status"></span>
+        <span class="compact-chevron" data-icon="chevronDown"></span>
+      </button>
+      <div id="expanded-view" class="expanded-view">
+        <header class="utility-header">
+          <button id="settings-back" class="text-button route-back" aria-label="Back to sessions" hidden><span data-icon="back"></span><span id="back-destination">Sessions</span></button>
+          <h1 id="settings-title" hidden>Settings</h1>
+          <div id="session-summary" class="session-summary"><span id="header-avatars" class="header-avatars"></span><span id="session-count">0</span><span id="attention-count" class="attention-count" hidden></span></div>
+          <div class="header-actions">
+            <button id="archive-button" class="text-button" title="Archived sessions">Archive <span id="archive-count">0</span></button>
+            <button id="settings-attention" class="text-button attention-action" hidden>View request</button>
+            <span id="preview-label" class="preview-label" hidden>Preview</span>
+            <button class="icon-button" id="sound-button" aria-label="Unmute alerts" aria-pressed="false" data-tip="Unmute alerts" data-icon="muted"></button>
+            <button class="icon-button" id="settings-button" aria-label="Settings" data-tip="Settings" data-icon="settings"></button>
+            <span class="utility-divider"></span>
+            <button class="icon-button" id="collapse-button" aria-label="Collapse sessions" data-tip="Collapse · Esc" data-icon="chevronUp"></button>
+          </div>
+        </header>
+        <div id="usage-band" class="usage-band" aria-label="Account quota"></div>
+        <div id="sessions-list" class="sessions-list" role="list" aria-label="Sessions"></div>
+        <section id="settings-view" class="settings-view" aria-labelledby="settings-title" hidden>
+          <nav class="settings-nav" aria-label="Settings sections">
+            <button data-settings-page="agents" aria-current="page">Agents</button>
+            <button data-settings-page="appearance">Appearance</button>
+            <button data-settings-page="behavior">Behavior</button>
+          </nav>
+          <div id="settings-scroll" class="settings-scroll">
+            <section id="settings-agents" class="settings-page" aria-label="Agents">
+              <div id="agents-overview"><div id="settings-integrations"></div><p class="settings-note" id="settings-note"></p></div>
+              <section id="provider-detail" hidden><h2 id="provider-title"></h2>
+                <section id="codex-guide" class="setup-guide" aria-label="Codex setup" hidden>
+                  <ol class="setup-stages"><li data-setup-stage="0">Detect</li><li data-setup-stage="1">Connect</li><li data-setup-stage="2">Review hooks</li><li data-setup-stage="3">Verify activity</li></ol>
+                  <h3 id="setup-step-title"></h3><p id="setup-step-note" class="settings-note" role="status" aria-live="polite"></p>
+                  <div class="setup-actions"><button id="setup-detect" class="text-button">Detect CLI</button><button id="setup-connect" class="text-button">Connect</button><button id="setup-copy" class="text-button">Copy /hooks</button><button id="setup-reviewed" class="text-button">I reviewed the hooks</button><button id="setup-verify" class="text-button">Check activity</button><button id="setup-back" class="text-button">Previous step</button></div>
+                </section>
+                <section id="provider-connect-guide" class="setup-guide" aria-label="Provider setup" hidden>
+                  <ol class="setup-stages"><li>Detect</li><li>Connect</li><li>Review</li><li>Verify activity</li></ol>
+                  <p id="provider-connect-note" class="settings-note" role="status" aria-live="polite"></p>
+                  <div class="setup-actions"><button id="provider-detect" class="text-button">Detect CLI</button><button id="provider-connect" class="text-button">Connect</button><button id="provider-reviewed" class="text-button">I reviewed the integration</button><button id="provider-verify" class="text-button">Check activity</button></div>
+                </section>
+                <div id="provider-usage-detail"></div><p id="provider-diagnostics" class="settings-note"></p><section id="terminal-picker" aria-label="Choose Codex terminal" hidden><p id="terminal-session-context" class="settings-note"></p><p id="terminal-picker-note" class="settings-note" role="status" aria-live="polite"></p><div id="terminal-choices"></div><button id="terminal-refresh" class="text-button">Refresh terminals</button></section></section>
+            </section>
+            <section id="settings-appearance" class="settings-page" aria-label="Appearance" hidden>
+              <label class="settings-row"><span><strong>Reduce motion</strong><small>Keep feedback, remove spatial animation.</small></span><input id="setting-motion" type="checkbox" role="switch"></label>
+              <label class="settings-row"><span><strong>Attach to bezel</strong><small>Meet the top edge of the display.</small></span><input id="setting-bezel" type="checkbox" role="switch" checked></label>
+            </section>
+            <section id="settings-behavior" class="settings-page" aria-label="Behavior" hidden>
+              <label class="settings-row"><span><strong>Auto-open requests</strong><small>Reveal fresh requests without taking keyboard focus.</small></span><input id="setting-auto-open" type="checkbox" role="switch" checked></label>
+              <div class="settings-row"><span><strong>Closed sessions</strong><small>Move to Archive immediately after verified closure. CLI history is unchanged.</small></span></div>
+              <input id="setting-auto-archive" type="checkbox" hidden disabled>
+              <input id="setting-archive-delay" type="number" min="1" max="10080" value="5" hidden disabled>
+              <div class="settings-row"><span><strong>Archived sessions</strong><small>Restore hidden context without changing CLI history.</small></span><button id="show-archived" class="text-button">View archive</button></div>
+              <label class="settings-row"><span><strong>Sound alerts</strong><small>Requests and completed responses.</small></span><input id="setting-sound" type="checkbox" role="switch"></label>
+              <div class="settings-row"><span>Open sessions<small id="shortcut-hint">While this page has focus</small></span><kbd>Ctrl Alt Space</kbd></div>
+            </section>
+            <section id="settings-archive" class="settings-page" aria-label="Archive" hidden>
+              <div id="archive-browser"><p class="settings-note">Saved sessions. Restore one to return it to Sessions.</p><p id="archive-protection-note" class="settings-note" hidden></p><div id="archive-list"></div>
+              <button id="clear-archive" class="text-button destructive-action" hidden>Delete all</button></div>
+              <section id="archive-confirm" class="archive-confirm" aria-labelledby="archive-confirm-title" hidden>
+                <h2 id="archive-confirm-title">Delete archived session?</h2>
+                <p id="archive-confirm-context" class="settings-note"></p>
+                <p class="settings-note">This removes saved context from Threadcap. CLI history and project files are unchanged. This cannot be undone.</p>
+                <div class="setup-actions"><button id="archive-delete-cancel" class="text-button">Cancel</button><button id="archive-delete-confirm" class="text-button destructive-action">Delete</button></div>
+              </section>
+              <p id="archive-delete-note" class="settings-note" role="status" aria-live="polite"></p>
+            </section>
+            <p id="preferences-note" class="settings-note" role="status"></p>
+          </div>
+        </section>
+        <footer class="island-footer"><span id="connection-label"><span class="connection-dot"></span>Connecting</span><span class="footer-hint">Select a session to explore <kbd>↵</kbd></span><button id="all-sessions-button" class="all-sessions-button" hidden>Show all sessions</button></footer>
+      </div>
+    </section>
+    <p id="toast" class="toast" aria-hidden="true"></p>
+  </main>
+  <div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <aside id="preview-tools" class="preview-tools" aria-label="Preview controls" hidden>
+    <div class="lab-heading"><span class="lab-mark" data-icon="motion"></span><span>Motion preview</span><span class="lab-caption">Local simulation</span></div>
+    <div class="lab-controls">
+      <div class="agent-picker" role="group" aria-label="Preview agent">
+        <button data-agent="codex" aria-pressed="true" aria-label="Preview Codex"></button>
+        <button data-agent="antigravity" aria-pressed="false" aria-label="Preview Antigravity"></button>
+        <button data-agent="opencode" aria-pressed="false" aria-label="Preview OpenCode"></button>
+      </div>
+      <span class="lab-divider"></span>
+      <label class="state-picker"><span class="sr-only">Agent state</span><select id="state-picker"><option value="running">Working</option><option value="idle">Idle</option><option value="waiting_approval">Approval</option><option value="waiting_input">Question</option><option value="completed">Done</option><option value="failed">Failed</option><option value="disconnected">Offline</option></select><span data-icon="chevronDown"></span></label>
+      <button id="replay-button" class="icon-button" aria-label="Replay state animation" data-tip="Replay" data-icon="replay"></button>
+      <span class="lab-divider"></span>
+      <button id="view-button" class="lab-button" aria-pressed="true">Expanded</button>
+      <button id="follow-button" class="lab-button follow-button" aria-label="Play reference-inspired preview sequence" title="Play preview sequence" data-icon="play" aria-pressed="false"></button>
+      <button id="motion-button" class="icon-button" aria-label="Reduce motion" aria-pressed="false" data-tip="Reduce motion" data-icon="motion"></button>
+      <button id="bezel-button" class="icon-button" aria-label="Switch to floating island" aria-pressed="true" data-tip="Switch to floating island" data-icon="dock"></button>
+    </div>
+    <p class="lab-note">Choose an agent and state. Click a session for details.</p>
+  </aside>
+
+</body>
+</html>

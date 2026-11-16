@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 128">
+  <view id="a" viewBox="0 0 128 128"/><view id="b" viewBox="128 0 128 128"/><view id="c" viewBox="256 0 128 128"/>
+  <symbol id="mark-a" viewBox="0 0 128 128"><path fill="#f5f5f7" d="M16 20h32v20h32V20h32v60c0 18-14 32-32 32H48c-18 0-32-14-32-32z"/><path fill="#83b4ff" d="M52 76h24v8H52z"/></symbol>
+  <symbol id="mark-b" viewBox="0 0 128 128"><path fill="#f5f5f7" d="M16 24h96v24H16zM16 60h40v20h40V60h16v20c0 18-14 32-32 32H48c-18 0-32-14-32-32z"/></symbol>
+  <symbol id="mark-c" viewBox="0 0 128 128"><path fill="#f5f5f7" d="M16 24h24v40c0 13 11 24 24 24s24-11 24-24V24h24v40c0 27-21 48-48 48S16 91 16 64z"/><path fill="#83b4ff" d="M56 24h16v32H56z"/></symbol>
+  <use href="#mark-a" width="128" height="128"/><use href="#mark-b" x="128" width="128" height="128"/><use href="#mark-c" x="256" width="128" height="128"/>
+</svg>

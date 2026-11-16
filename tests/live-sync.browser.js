@@ -1,0 +1,56 @@
+(async () => {
+  const checks = [];
+  const check = (name, passed) => checks.push({ name, passed: Boolean(passed) });
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const html = await (await fetch('/index.html')).text();
+  const frame = document.createElement('iframe');
+  frame.style.cssText = 'position:fixed;width:1000px;height:720px;left:0;top:0;z-index:99999;border:0';
+  const stub = `window.testStreams = []; window.EventSource = class { constructor() { window.testStreams.push(this); } close() { this.closed = true; } emit(data) { this.onmessage({data: JSON.stringify(data)}); } };`;
+  const ready = new Promise((resolve) => { frame.onload = resolve; });
+  frame.srcdoc = html.replace('<head>', `<head><base href=${location.origin}/><script>${stub}</script>`);
+  document.body.append(frame);
+  try {
+    await ready;
+    const win = frame.contentWindow, doc = win.document, api = win.IslandPreview;
+    const base = { sessionId: 'codex:live-test', agentId: 'codex', status: 'waiting_input', connectionStatus: 'connected', revision: 1, requestId: 'r1', question: 'Choose storage?', options: ['SQLite'], taskTitle: 'Test synchronization', capabilities: { canAnswer: true }, supportsAcknowledgment: true };
+    const envelope = (sequence, data, bridgeId = 'test-epoch') => ({ protocolVersion: 1, bridgeId, sequence, eventId: bridgeId + ':' + sequence, ...data });
+    let stream = win.testStreams.at(-1);
+    const snapshot = (sequence, sessions, bridgeId) => envelope(sequence, { type: 'sync', sessions }, bridgeId);
+    const update = (sequence, session) => envelope(sequence, { type: 'session_update', session });
+    check('Live startup has no seeded sessions', !api.enabled && api.snapshot().sessions.length === 0);
+    stream.emit(snapshot(1, [base]));
+    api.showFocused(base.sessionId);
+    await wait(320);
+    const row = doc.querySelector('.session');
+    const input = row.querySelector('.reply-input');
+    input.focus(); input.value = 'My draft'; input.setSelectionRange(2, 5); input.dispatchEvent(new win.Event('input', { bubbles: true }));
+    stream.onerror();
+    check('Disconnect retains row and task lifecycle', doc.querySelector('.session') === row && api.snapshot().sessions[0].status === 'waiting_input');
+    check('Disconnect blocks responses without replacing focused input', input === row.querySelector('.reply-input') && input.readOnly && input.value === 'My draft' && input.selectionStart === 2 && doc.activeElement === input);
+    stream.emit(snapshot(1, [base]));
+    check('Fresh snapshot restores same input and draft', input === row.querySelector('.reply-input') && !input.readOnly && input.value === 'My draft' && input.selectionStart === 2);
+    check('Reconnect does not announce an old request', !doc.getElementById('announcer').textContent.includes('needs input'));
+    stream.emit(update(2, { ...base, revision: 2, activity: 'Waiting for reply' }));
+    check('Progress preserves input focus and row identity', doc.activeElement === input && input === row.querySelector('.reply-input') && doc.querySelector('.session') === row);
+    stream.emit(update(2, { ...base, revision: 1, question: 'Stale question' }));
+    check('Duplicate stream update cannot replace current request', api.snapshot().sessions[0].revision === 2 && api.snapshot().sessions[0].question === base.question);
+    stream.emit(update(4, { ...base, revision: 4 }));
+    check('Sequence gap blocks decisions and retains context', stream.closed && input.readOnly && api.snapshot().sessions[0].revision === 2);
+    await wait(550);
+    stream = win.testStreams.at(-1);
+    stream.emit(snapshot(4, [{ ...base, revision: 4 }]));
+    check('Resynchronization restores current request without losing draft', !input.readOnly && input.value === 'My draft' && api.snapshot().sessions[0].revision === 4);
+    stream.emit(update(5, { ...base, revision: 5, requestId: null, status: 'running', capabilities: {} }));
+    check('Authoritative withdrawal removes response controls immediately', !row.querySelector('.reply-input') && api.snapshot().sessions[0].status === 'running');
+    stream.onerror();
+    stream.emit(snapshot(0, [{ ...base, revision: 5, connectionStatus: 'disconnected', capabilities: {} }], 'restarted-epoch'));
+    check('Bridge restart keeps stale context and does not offer unsupported actions', api.snapshot().sessions[0].connectionStatus === 'disconnected' && !row.querySelector('.reply-input') && !row.querySelector('[data-action=allow]') && row.querySelector('.jump-button').disabled);
+    check('Monitoring detail explains where to respond', row.textContent.includes('Monitoring only. Respond in your terminal.'));
+    stream.onerror();
+    stream.emit(snapshot(1, [{ ...base, revision: 6, capabilities: {} }], 'restarted-epoch'));
+    check('Monitoring-only reconnect keeps lifecycle separate from connection', api.snapshot().sessions[0].status === 'waiting_input' && row.querySelector('.agent-avatar').dataset.state === 'waiting_input');
+  } finally {
+    frame.remove();
+  }
+  return { passed: checks.filter((c) => c.passed).length, failed: checks.filter((c) => !c.passed), checks };
+})();

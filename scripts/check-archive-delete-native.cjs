@@ -1,0 +1,77 @@
+const {startNative}=require('./native-harness.cjs');
+const fs=require('node:fs'),path=require('node:path');
+const {execFileSync}=require('node:child_process');
+async function main(){
+  const h=await startNative('archive-delete'),checks=[];
+  const check=(name,value)=>{checks.push({name,passed:Boolean(value)});if(!value)throw Error(name);};
+  const state=()=>h.evaluate(`fetch('http://127.0.0.1:${h.port}/api/sessions')`);
+  const rows=async()=> (await(await fetch(`http://127.0.0.1:${h.port}/api/sessions`)).json()).sessions;
+  const inject=(id,rev=1,extra={})=>h.inject({agentId:'codex',sessionId:id,sourceRevision:rev,eventId:`${id}-${rev}`,status:'completed',taskTitle:`Fixture ${id}`,eventKind:'completion',...extra});
+  const archive=id=>h.evaluate(`IslandDesktop.archiveSession(${JSON.stringify('codex:'+id)},true)`);
+  const click=id=>h.evaluate(`document.getElementById(${JSON.stringify(id)}).click()`);
+  try {
+    await inject('one');await inject('two');await archive('one');await archive('two');
+    await h.until("document.getElementById('show-archived').textContent.includes('2')");
+    await h.evaluate("document.getElementById('settings-button').click();document.querySelector('[data-settings-page=behavior]').click();document.getElementById('show-archived').click()");
+    await h.until("document.querySelectorAll('#archive-list .destructive-action').length===2");
+    await h.evaluate("document.querySelector('#archive-list .destructive-action').click()");
+    check('Single deletion asks for confirmation and focuses Cancel',await h.evaluate("!document.getElementById('archive-confirm').hidden && document.activeElement.id==='archive-delete-cancel'"));
+    check('Confirmation itself never deletes a session',(await rows()).length===2);
+    await click('archive-delete-cancel');
+    check('Cancel preserves archived data',(await rows()).length===2 && await h.evaluate("document.getElementById('archive-confirm').hidden"));
+    for (const action of ['Escape','Back','page navigation']) {
+      await h.evaluate("document.querySelector('#archive-list .destructive-action').click()");
+      if(action==='Escape') await h.evaluate("document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))");
+      else if(action==='Back') await click('settings-back');
+      else await h.evaluate("document.querySelector('[data-settings-page=appearance]').click()");
+      check(`${action} cancels an unsubmitted confirmation`,await h.evaluate("document.getElementById('archive-confirm').hidden && IslandPreview.snapshot().settingsOpen") && (await rows()).length===2);
+      if(action==='page navigation') await h.evaluate("document.querySelector('[data-settings-page=behavior]').click()");
+    }
+    await h.evaluate("document.querySelector('#archive-list .destructive-action').click()");
+    await h.wait(350);
+    check('Confirmation decisions are visible without manual scrolling',await h.evaluate("(()=>{const panel=document.getElementById('settings-scroll').getBoundingClientRect();const button=document.getElementById('archive-delete-confirm').getBoundingClientRect();return button.top>=panel.top && button.bottom<=panel.bottom;})()"));
+    const clip=await h.evaluate("(()=>{const r=document.getElementById('island-surface').getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,scale:1};})()");
+    const shot=await h.send('Page.captureScreenshot',{format:'png',clip});fs.mkdirSync(path.join(h.root,'artifacts'),{recursive:true});fs.writeFileSync(path.join(h.root,'artifacts/archive-delete-confirm.png'),Buffer.from(shot.data,'base64'));
+    check('Submitted deletion disables Cancel and duplicate submission',await h.evaluate("(()=>{const button=document.getElementById('archive-delete-confirm');button.click();button.click();return button.disabled && document.getElementById('archive-delete-cancel').disabled;})()"));
+    check('Confirmed single deletion updates the native archive without reconnect',await h.until("document.querySelectorAll('#archive-list .settings-row').length===1 && document.getElementById('archive-confirm').hidden"));
+    check('Unselected archived session survives',(await rows()).some(s=>s.sessionId==='codex:two'));
+    await inject('one',2,{status:'idle',eventKind:'activity'});
+    check('A later cached/progress event cannot resurrect deleted context',!(await rows()).some(s=>s.sessionId==='codex:one'));
+    await inject('one',3,{status:'running',eventKind:'prompt'});
+    check('Genuine new work can create fresh session context',await h.until("IslandPreview.snapshot().sessions.some(s=>s.sessionId==='codex:one')"));
+    await inject('three');await archive('three');
+    await click('clear-archive');
+    await inject('four');await archive('four');
+    await click('archive-delete-confirm');
+    check('Clear archive deletes only the confirmed selection',await h.until("document.getElementById('archive-confirm').hidden && document.getElementById('archive-list').textContent.includes('Fixture four')") && (await rows()).filter(s=>s.archived).length===1);
+    await click('clear-archive');
+    await inject('four',2,{status:'running',eventKind:'prompt'});
+    await click('archive-delete-confirm');
+    check('New activity invalidates confirmation and protects the session',await h.until("document.getElementById('archive-delete-note').textContent.includes('changed')") && (await rows()).some(s=>s.sessionId==='codex:four'&&!s.archived));
+    await click('archive-delete-cancel');
+    await inject('five');await archive('five');await click('clear-archive');
+    await h.evaluate("window.dispatchEvent(new CustomEvent('island-desktop-action',{detail:'outside-click'}))");
+    check('Outside dismissal cancels pending confirmation without deleting',(await rows()).some(s=>s.sessionId==='codex:five') && await h.evaluate("document.getElementById('archive-confirm').hidden && !IslandPreview.snapshot().expanded"));
+    check('Clear archive never touches live sessions',(await rows()).some(s=>s.sessionId==='codex:one'&&s.status==='running'));
+    const helper=path.join(h.root,'src-tauri/binaries/vibe-island-codex-x86_64-pc-windows-msvc.exe');
+    const hook=(name,extra={})=>execFileSync(helper,['hook','--port',String(h.port),'--state-file',path.join(h.temp,'codex.sqlite3')],{env:h.env,windowsHide:true,input:JSON.stringify({hook_event_name:name,session_id:'cache-fixture',cwd:h.temp,turn_id:'first',...extra})});
+    hook('SessionStart');hook('UserPromptSubmit',{prompt:'Private isolated cache fixture'});hook('Stop',{last_assistant_message:'Fixture complete'});
+    await h.until("IslandPreview.snapshot().sessions.some(s=>s.sessionId==='codex:cache-fixture'&&s.status==='completed')");
+    await archive('cache-fixture');
+    const cached=(await rows()).find(s=>s.sessionId==='codex:cache-fixture');
+    await h.evaluate(`IslandDesktop.deleteArchived([{sessionId:'codex:cache-fixture',revision:${cached.revision}}])`);
+    const body=JSON.parse(execFileSync('python',['-c',"import sqlite3,sys; print(sqlite3.connect(sys.argv[1]).execute('SELECT body FROM codex_sessions WHERE id=?',('codex:cache-fixture',)).fetchone()[0])",path.join(h.temp,'codex.sqlite3')],{encoding:'utf8',windowsHide:true}));
+    check('Native deletion clears helper-owned prompt and result context',!body.report.prompt&&!body.report.result&&body.report.eventKind==='purged');
+    hook('UserPromptSubmit',{turn_id:'second',prompt:'Fresh isolated task'});
+    check('Purged helper preserves revisions so a new prompt can resume monitoring',await h.until("IslandPreview.snapshot().sessions.some(s=>s.sessionId==='codex:cache-fixture'&&s.prompt==='Fresh isolated task')"));
+    await inject('cleanup');await archive('cleanup');
+    fs.writeFileSync(path.join(h.temp,'codex.sqlite3'),'invalid isolated SQLite fixture');
+    await h.evaluate("document.getElementById('settings-button').click();document.querySelector('[data-settings-page=behavior]').click();if(document.getElementById('archive-list').hidden)document.getElementById('show-archived').click()");
+    await h.until("[...document.querySelectorAll('#archive-list .settings-row')].some(row=>row.textContent.includes('cleanup'))");
+    await h.evaluate("[...document.querySelectorAll('#archive-list .settings-row')].find(row=>row.textContent.includes('cleanup')).querySelector('.destructive-action').click()");
+    await click('archive-delete-confirm');
+    check('Failed cache cleanup is reported honestly after canonical deletion',await h.until("document.getElementById('archive-delete-note').textContent.includes('could not be cleared')") && !(await rows()).some(s=>s.sessionId==='codex:cleanup'));
+    console.log(JSON.stringify({passed:checks.length,failed:[],modelCalls:0},null,2));
+  } finally {await h.close();fs.mkdirSync(path.join(h.root,'artifacts'),{recursive:true});fs.writeFileSync(path.join(h.root,'artifacts/archive-delete-native.json'),JSON.stringify({checks},null,2));}
+}
+main().catch(error=>{console.error(error);process.exitCode=1;});

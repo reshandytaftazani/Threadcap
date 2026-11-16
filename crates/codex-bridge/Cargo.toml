@@ -1,0 +1,31 @@
+[package]
+name = "vibe-island-codex"
+version = "0.8.4"
+edition = "2021"
+license = "MIT"
+description = "Portable Codex lifecycle hook adapter for Vibe Island on Windows"
+
+[dependencies]
+anyhow = "1"
+base64 = "0.23"
+clap = { version = "4", features = ["derive"] }
+fs2 = "0.4"
+rusqlite = { version = "0.37", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }
+time = { version = "0.3", features = ["parsing"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp"] }
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
