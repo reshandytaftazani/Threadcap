@@ -38,9 +38,9 @@ If the repository already exists, inspect it and use its remote; do not overwrit
 
 Inspect the actual GitHub run and download/check its artifact. Local success does not prove GitHub Actions passed. Record the run result in [publication verification](publication-verification.md).
 
-## Before making it public
+## Public launch checklist
 
-- Enable private vulnerability reporting and verify that the reporting route in [SECURITY.md](../SECURITY.md) is available. See [GitHub's instructions](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository).
+- At public launch, enable private vulnerability reporting and verify that the reporting route in [SECURITY.md](../SECURITY.md) is available. It may not be available while the repository is private. See [GitHub's instructions](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository).
 - Enable applicable GitHub secret-scanning/push-protection features and review repository settings. Do not claim these settings are enabled merely because this file exists.
 - Confirm license/notices and dependency redistribution requirements, the capability matrix, sanitization, and CI results.
 - Confirm that the maintainer intends public visibility. Do not change visibility automatically as part of the build.

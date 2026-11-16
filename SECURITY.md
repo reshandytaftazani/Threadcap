@@ -6,7 +6,7 @@ Threadcap is a preview application. Fixes target the latest development revision
 
 Use **Security > Advisories > Report a vulnerability** on this repository if private vulnerability reporting is enabled. Include the affected version, Windows/CLI versions, impact, and a minimal sanitized reproduction. Do not post credentials, personal session databases, raw prompts, or exploit details in a public issue.
 
-Before public launch, maintainers must enable private vulnerability reporting in GitHub repository settings. If the private reporting button is unavailable, open a public issue asking for a private contact channel, without disclosing the vulnerability itself. No dedicated security email or response-time guarantee has been established.
+At public launch, maintainers must enable private vulnerability reporting in GitHub repository settings; this feature may not be available while the repository remains private. If the private reporting button is unavailable, open an issue asking for a private contact channel, without disclosing the vulnerability itself. No dedicated security email or response-time guarantee has been established.
 
 See [GitHub's private reporting instructions](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository).
 

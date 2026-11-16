@@ -2,6 +2,14 @@
   "name": "threadcap",
   "version": "0.8.4",
   "description": "Dynamic Island for AI coding agents on Windows",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/reshandytaftazani/Threadcap.git"
+  },
+  "homepage": "https://github.com/reshandytaftazani/Threadcap#readme",
+  "bugs": {
+    "url": "https://github.com/reshandytaftazani/Threadcap/issues"
+  },
   "main": "src/index.html",
   "scripts": {
     "test": "node --test tests/session-model.test.cjs tests/presentation-policy.test.cjs tests/usage.test.cjs && cargo test --locked --manifest-path crates/island-core/Cargo.toml",
