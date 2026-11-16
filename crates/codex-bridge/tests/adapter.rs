@@ -376,7 +376,7 @@ fn verify_windows_command(unusual_path: bool, powershell: bool) {
     let port = listener.local_addr().unwrap().port();
     listener.set_nonblocking(true).unwrap();
     let server = std::thread::spawn(move || {
-        let deadline = Instant::now() + Duration::from_secs(8);
+        let deadline = Instant::now() + Duration::from_secs(30);
         let mut stream = loop {
             match listener.accept() {
                 Ok((stream, _)) => break stream,

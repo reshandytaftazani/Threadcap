@@ -60,7 +60,7 @@ Quota is shared account information, not per-session progress. Account-to-sessio
 
 ## Build from source
 
-Install Node.js 24, MSVC Rust, Visual Studio C++ Build Tools with a Windows SDK, and WebView2. See [Tauri's Windows prerequisites](https://v2.tauri.app/start/prerequisites/). Development and CI use Rust 1.100.0; older toolchains have not been established as supported.
+Install Git, Node.js 24, MSVC Rust, Visual Studio C++ Build Tools with a Windows SDK, and WebView2. See [Tauri's Windows prerequisites](https://v2.tauri.app/start/prerequisites/). Development and CI use Rust 1.100.0; older toolchains have not been established as supported.
 
 ```powershell
 npm.cmd ci

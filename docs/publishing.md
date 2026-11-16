@@ -11,7 +11,7 @@ The repository name is **Threadcap**. The first upload is private so that GitHub
 
 ## Clean-source build
 
-Use a fresh clone or a Git archive of the reviewed commit. Do not copy `node_modules`, compiled helpers, Cargo targets, ignored local scripts, or local databases into it. From that directory, with Windows build prerequisites installed, run:
+Use a fresh clone of the reviewed commit. A Git archive can also supply clean source; initialize an empty Git repository inside the extracted directory before running the publication inventory check, which uses Git's ignore rules. Do not copy `node_modules`, compiled helpers, Cargo targets, ignored local scripts, or local databases into it. From that directory, with Windows build prerequisites installed, run:
 
 ```powershell
 npm.cmd ci

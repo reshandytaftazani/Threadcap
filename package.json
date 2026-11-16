@@ -21,7 +21,7 @@
     "test:agy-usage": "node scripts/check-antigravity-usage-native.cjs",
     "test:opencode-plugin": "node scripts/check-opencode-plugin.cjs",
     "test:opencode-lifetime": "node scripts/check-opencode-lifetime-native.cjs",
-    "test:codex": "cargo test --locked --manifest-path crates/codex-bridge/Cargo.toml",
+    "test:codex": "cargo test --locked --manifest-path crates/codex-bridge/Cargo.toml -- --test-threads=1",
     "build:codex": "node scripts/build-codex-bridge.cjs",
     "icons:build": "tauri icon src/assets/island-app.svg --output src-tauri/icons",
     "release:stage": "node scripts/stage-release.cjs",
