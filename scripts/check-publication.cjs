@@ -18,6 +18,9 @@ const privateContent = [
   ['GitHub token', /\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})\b/],
   ['provider secret', /\bsk-(?:proj-|ant-)?[A-Za-z0-9_-]{40,}\b/],
   ['credential in URL', /https?:\/\/[^\s/@:]+:[^\s/@]+@/i],
+  ['GitHub token', /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{30,})\b/],
+  ['API key', /\b(?:sk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{32,}|AIza[A-Za-z0-9_-]{30,}|AKIA[A-Z0-9]{16})\b/],
+  ['private key block', /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],
 ];
 for (const file of files) {
   const relative = file.replaceAll('\\', '/');

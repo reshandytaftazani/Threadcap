@@ -36,7 +36,7 @@ pub(crate) fn open(path: &Path) -> Result<Connection> {
         std::fs::create_dir_all(parent)?;
     }
     let db = Connection::open(path)?;
-    db.busy_timeout(Duration::from_millis(250))?;
+    db.busy_timeout(Duration::from_secs(1))?;
     db.execute_batch("CREATE TABLE IF NOT EXISTS codex_sessions (id TEXT PRIMARY KEY, body TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS codex_events (session_id TEXT, event_key TEXT, revision INTEGER NOT NULL, PRIMARY KEY(session_id,event_key));")?;
     Ok(db)

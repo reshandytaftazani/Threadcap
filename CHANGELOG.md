@@ -5,6 +5,7 @@ This file summarizes implemented releases. Detailed verification records remain 
 ## Unreleased
 
 - Prepare the Threadcap repository for publication with MIT licensing, user-oriented documentation, contributor/security guidance, GitHub templates, and source-package checks.
+- Allow up to one second for short SQLite cache write contention after a clean GitHub runner exposed dropped concurrent hook writes; retain the concurrency test and add a held-lock regression.
 
 ## 0.8.4
 

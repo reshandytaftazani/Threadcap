@@ -233,6 +233,20 @@ fn concurrent_hook_processes_keep_a_monotonic_source_revision() {
 }
 
 #[test]
+fn brief_cache_write_contention_does_not_drop_a_hook() {
+    let temp=tempfile::tempdir().unwrap();let path=temp.path().join("state");
+    record(&path,"SessionStart");
+    let mut db=rusqlite::Connection::open(&path).unwrap();
+    let lock=db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).unwrap();
+    let ready=std::sync::Arc::new(std::sync::Barrier::new(2));
+    let worker_ready=ready.clone();let worker_path=path.clone();
+    let worker=std::thread::spawn(move || {worker_ready.wait();record(&worker_path,"SessionStart");});
+    ready.wait();std::thread::sleep(std::time::Duration::from_millis(500));lock.commit().unwrap();
+    worker.join().unwrap();
+    assert_eq!(state::snapshots(&path).unwrap()[0]["sourceRevision"],2);
+}
+
+#[test]
 fn install_update_and_uninstall_preserve_other_hooks_and_empty_custom_groups() {
     let mut document = json!({"description":"Keep this","extra":{"setting":true},"hooks":{"Stop":[{"matcher":"custom","hooks":[{"type":"command","command":"user-owned-handler"}]}],"SessionEnd":[],"Custom":[{"hooks":[]}]}});
     let original = document.clone();
