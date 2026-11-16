@@ -14,11 +14,15 @@ Installed executable names, storage locations, provider hook/plugin paths, trust
 
 ## Local checks
 
-- Publication validation passed for 166 source files, including local Markdown links, relative module imports, Rust embedded files, HTML resources, and npm/Tauri command entry points.
+- Final publication validation passed for 169 source files, including local Markdown links, relative module imports, Rust embedded files, HTML resources, and npm/Tauri command entry points. The additional folder guides and this completed report are documentation-only follow-ups to the validated build.
 - JavaScript/model tests: 19 passed. Core Rust tests: 26 passed. Observer tests: 32 passed. Native unit tests: 10 passed. Python compatibility tests: 15 passed.
 - PowerShell scripts parsed successfully. Production UI behavior modules and official source artwork retain their behavior/content; the avatar source comment now points to the new provenance location.
 - A shell fixture initially hit a nonblocking accepted-socket read. Its receiver now explicitly returns to blocking mode before applying the existing two-second read timeout. This adjusts the fixture, not production transport deadlines.
 
 ## GitHub verification
 
-The private Windows workflow will verify the reorganized source and build/stage its installer. Its actual result will be recorded after completion. Compilation and unit checks do not establish native focus, DPI, click-through, or complete live-provider acceptance; those remain covered only to the extent documented in [current capabilities](../guides/capabilities.md).
+The private [Windows workflow run 43973768471](https://github.com/reshandytaftazani/Threadcap/actions/runs/43973768471) passed on commit `44aa5fb690f3b1c500745337b53e9eac517d4562`: publication checks, unit/observer/native tests, production installer build, staging, and artifact upload all succeeded.
+
+The downloaded artifact's 11 manifest entries matched their SHA256 values. All four local links in its staged Markdown guides resolved to included files; other source references point to the corresponding GitHub revision. The downloaded helper reported version 0.8.4. The CI installer was not installed over the user's running application.
+
+Compilation and unit checks do not establish native focus, DPI, click-through, or complete live-provider acceptance; those remain covered only to the extent documented in [current capabilities](../guides/capabilities.md).

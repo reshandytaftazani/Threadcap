@@ -37,6 +37,8 @@ Threadcap/
 
 ## Conventions
 
+- Use kebab-case for documentation, JavaScript, and PowerShell filenames; use snake_case for Python and Rust modules. Retain framework filenames such as `Cargo.toml` and `tauri.conf.json`, and standard root community files such as `README.md` and `CONTRIBUTING.md`. The approved product specification remains at `design.md`.
+
 Use kebab-case for new Markdown, JavaScript, and PowerShell filenames. Keep Rust and Python module names in snake_case, and retain tool-defined names such as `Cargo.toml`, `tauri.conf.json`, `README.md`, and `AGENTS.md`.
 
 - Standard community files remain at the root: README, LICENSE, CHANGELOG, CONTRIBUTING, SECURITY, and third-party notices. `AGENTS.md` supplies coding instructions; `design.md` remains the approved product specification.
