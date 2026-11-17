@@ -24,7 +24,7 @@ Threadcap shows session activity, surfaces requests, and keeps account quota sep
    ```
 
 3. Run the installer, then start Threadcap. It lives in the tray; closing its window hides it. Choose **Exit** from the tray to quit.
-4. Open the island, then **Settings > Agents**, and connect each CLI you use.
+4. Open the island, then **Settings > Agents**, and select **Connect all** or connect a single CLI.
 
 The package targets native Windows x64. Windows 10/11 are the intended platforms; a full Windows-version and display-scaling matrix has not been verified. Microsoft Edge WebView2 is required; the installer can download it if absent. An offline computer needs WebView2 installed beforehand. Rust, Node.js, and Python are not required to run the installed app. Install and sign in to your agent CLIs separately.
 
@@ -32,9 +32,9 @@ The package targets native Windows x64. Windows 10/11 are the intended platforms
 
 | Provider | Verified CLI versions | Setup |
 | --- | --- | --- |
-| Codex CLI | 0.169.0 contract | Connect, restart Codex, then review and trust Threadcap's monitoring hooks in `/hooks`. The compatibility tag is `vibe-island.codex.v1`. |
-| Antigravity CLI | 1.5.9 | Connect, review the registered hooks/status-line wrapper, then restart the CLI. Existing status-line output and disabled preferences are preserved. |
-| OpenCode CLI | 2.2.7 and 2.3.0 registration; real TUI lifetime checked on 2.3.0 | Connect, review the plugin, then restart existing CLI clients to load the TUI observer. The shared server may remain running. |
+| Codex CLI | 0.169.0 contract | Restart after setup. If Codex requests review, use `/hooks` to review and trust the Threadcap observer. The compatibility tag is `vibe-island.codex.v1`. |
+| Antigravity CLI | 1.5.9 and 1.5.10 setup | Restart after setup. Threadcap preserves existing status-line output and disabled preferences. |
+| OpenCode CLI | 2.2.7 and 2.3.0 registration; real TUI lifetime checked on 2.3.0 | Restart CLI clients after setup to load the TUI observer. The shared server may remain running. |
 
 Registration does not prove live monitoring. Open a new session or generate fresh activity and check that it appears. Threadcap never grants Codex hook trust automatically. Version gates can reject an unverified CLI while preserving its configuration.
 

@@ -48,17 +48,16 @@
           </nav>
           <div id="settings-scroll" class="settings-scroll">
             <section id="settings-agents" class="settings-page" aria-label="Agents">
-              <div id="agents-overview"><div id="settings-integrations"></div><p class="settings-note" id="settings-note"></p></div>
+              <div id="agents-overview">
+                <div id="settings-integrations"></div>
+                <div class="setup-actions"><button id="connect-all" class="text-button" hidden>Connect all</button></div>
+                <p class="settings-note" id="settings-note" role="status"></p>
+              </div>
               <section id="provider-detail" hidden><h2 id="provider-title"></h2>
-                <section id="codex-guide" class="setup-guide" aria-label="Codex setup" hidden>
-                  <ol class="setup-stages"><li data-setup-stage="0">Detect</li><li data-setup-stage="1">Connect</li><li data-setup-stage="2">Review hooks</li><li data-setup-stage="3">Verify activity</li></ol>
-                  <h3 id="setup-step-title"></h3><p id="setup-step-note" class="settings-note" role="status" aria-live="polite"></p>
-                  <div class="setup-actions"><button id="setup-detect" class="text-button">Detect CLI</button><button id="setup-connect" class="text-button">Connect</button><button id="setup-copy" class="text-button">Copy /hooks</button><button id="setup-reviewed" class="text-button">I reviewed the hooks</button><button id="setup-verify" class="text-button">Check activity</button><button id="setup-back" class="text-button">Previous step</button></div>
-                </section>
                 <section id="provider-connect-guide" class="setup-guide" aria-label="Provider setup" hidden>
-                  <ol class="setup-stages"><li>Detect</li><li>Connect</li><li>Review</li><li>Verify activity</li></ol>
+                  <h3 id="provider-connect-state"></h3>
                   <p id="provider-connect-note" class="settings-note" role="status" aria-live="polite"></p>
-                  <div class="setup-actions"><button id="provider-detect" class="text-button">Detect CLI</button><button id="provider-connect" class="text-button">Connect</button><button id="provider-reviewed" class="text-button">I reviewed the integration</button><button id="provider-verify" class="text-button">Check activity</button></div>
+                  <div class="setup-actions"><button id="provider-connect" class="text-button">Connect</button><button id="setup-copy" class="text-button" hidden>Copy /hooks</button></div>
                 </section>
                 <div id="provider-usage-detail"></div><p id="provider-diagnostics" class="settings-note"></p><section id="terminal-picker" aria-label="Choose source terminal" hidden><p id="terminal-session-context" class="settings-note"></p><p id="terminal-picker-note" class="settings-note" role="status" aria-live="polite"></p><div id="terminal-choices"></div><button id="terminal-refresh" class="text-button">Refresh terminals</button></section></section>
             </section>

@@ -8,7 +8,7 @@ Unreleased direct replies: simple OpenCode 2.3.0 question forms with one support
 | --- | --- | --- |
 | Windows host | Tauri/Rust, embedded UI, loopback producer bridge, tray | Native tests and installed upgrade checked on the available Windows machine; full OS/DPI/multi-monitor coverage remains open. |
 | Codex monitoring | Ten official hooks after registration and manual trust review | 0.169.0 contract and actual cross-folder lifecycle observations; WSL/remote support is not established. |
-| Antigravity monitoring | Version-gated lifecycle hooks and exact CLI-process observation | 1.5.9; completed turns do not mean process exit. Native lifetime fixtures are separate from every real interactive exit path. |
+| Antigravity monitoring | Version-gated lifecycle hooks and exact CLI-process observation | 1.5.9 and 1.5.10 accepted by setup. Native registration against 1.5.10 is verified. Lifecycle and quota fixtures are separate from an authenticated interactive run. See [preview checks](../verification/session-opening.md#current-preview-checks). |
 | OpenCode monitoring | Server observer plus TUI lifetime plugin | Connect accepts 2.2.7/2.3.0. Real TUI lifetime tested on 2.3.0, including multiple clients, last-client closure, forced termination, restart, and resumption. |
 | Closure/Archive | Confirmed CLI/session end or terminal closure archives immediately for all providers | No age/heartbeat-based inference. Unverified legacy rows can remain visible until valid evidence is available. Context and protected requests remain stored. |
 | Reconnect/restart | Retained context appears as Checking and links are revalidated | Old notifications are not replayed; fresh evidence is needed for supported navigation or reactivation. |

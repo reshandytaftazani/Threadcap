@@ -4,16 +4,15 @@
 
 Install the x64 Windows package described in [README.md](../../README.md). Open the island from the tray, choose Settings, and use the Agents page to connect the CLI you already have installed and signed into.
 
-1. **Detect** checks the installed CLI/version.
-2. **Connect** registers the monitoring integration and preserves unrelated configuration with backups.
-3. **Review** the installed integration. Codex additionally requires manual trust in `/hooks` from a fresh CLI.
-4. Restart an existing CLI and generate fresh activity. A registered integration is not yet a verified live connection.
+1. Select **Connect all** to set up Codex, Antigravity, and OpenCode in one pass. Use **Connect** next to a provider to set up just that CLI. Threadcap checks compatibility and preserves unrelated configuration.
+2. Restart the CLIs that show **Waiting for activity**. If Codex asks for hook review, use `/hooks` in Codex. Select a provider row for details on a **Setup issue**. A batch continues even if one provider is unavailable.
+3. Open a session or use the CLI normally. Threadcap shows **Connected** when it receives fresh activity from that provider.
 
 For Antigravity, a disabled status line stays disabled; quota can remain unavailable. For OpenCode, restart the CLI client to load the TUI observer. An existing shared server may remain running. Connect supports specific verified versions; see [capabilities](capabilities.md).
 
 ## Sessions, requests, and Archive
 
-Hover widens the strip without opening the panel. Click to view sessions; use Back/Escape to return through Settings and detail pages. Outside-click collapses the island. The global shortcut is `Ctrl+Alt+Space` when registration succeeds; Settings reports if it is unavailable.
+Hover widens the strip without opening the panel. Click to view all sessions, or to open detail when the only listed session is Working. Use Back or Escape to return through Settings and detail pages. Outside-click collapses the island. The global shortcut opens the overview when registration succeeds. Settings reports if `Ctrl+Alt+Space` is unavailable.
 
 Requests may reveal automatically, subject to attention settings and interaction protection. Simple OpenCode 2.3.0 questions can be answered in the island when the TUI connector is available. Respond to other questions and approvals in the agent terminal. A finished turn cools down visually to Idle while its terminal remains available.
 

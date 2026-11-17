@@ -198,15 +198,11 @@ kbd { font-family: inherit; font-size: 10px; color: var(--secondary); border: 1p
 #archive-button { display: inline-flex; gap: 5px; align-items: center; color: var(--secondary); }
 #archive-count { color: var(--text); }
 .agent-avatar[data-state='checking'] { color: var(--secondary); --sprite-cycle: 1800ms; }
-.setup-stages li[data-current='true'] { color: var(--text); background: var(--hover); }
-.setup-stages li[data-complete='true'] { color: var(--green); }
 .activity-bars i { border-radius: 0; animation-timing-function: steps(3,end); }
 #archive-browser > .settings-note { margin-top: 0; }
 .integration-identity { display: flex; gap: 10px; align-items: center; }.integration-mode { color: var(--muted); font-size: 11px; }
 .integration-controls { display: flex; align-items: center; gap: 10px; }
 .integration-controls .text-button { min-width: 66px; min-height: 30px; }
-.codex-setup-note { margin-top: 8px; overflow-wrap: anywhere; }
-.codex-setup-note.is-error { color: var(--red); }
 .terminal-choice { display: block; width: 100%; background: transparent; text-align: left; color: var(--text); border-bottom: 1px solid var(--line); padding: 12px 4px; min-height: 44px; }
 .terminal-choice:hover { background: var(--hover); }
 .terminal-choice:active { background: var(--inset); }
@@ -215,10 +211,9 @@ kbd { font-family: inherit; font-size: 10px; color: var(--secondary); border: 1p
 .terminal-choice span { color: var(--secondary); font-size: 11px; line-height: 17px; margin-top: 4px; }
 .detail-tools { margin-top: 12px; display: flex; justify-content: flex-end; }
 .setup-guide { padding: 4px 0 12px; }
-.setup-stages { display: flex; flex-wrap: wrap; gap: 6px 14px; list-style: none; padding: 0; margin: 10px 0 16px; font-size: 11px; color: var(--muted); }
-.setup-stages [aria-current='step'] { color: var(--text); }
-.setup-stages .is-complete { color: var(--green); }
 .setup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+#agents-overview .setup-actions { margin-top: 12px; }
+#agents-overview .setup-actions:has(#connect-all[hidden]) { display: none; }
 .setup-guide h3 { font-size: 13px; font-weight: var(--weight-task); margin: 14px 0 6px; }
 #archive-list { font-size: 12px; padding-top: 12px; color: var(--secondary); }
 .archive-controls { display: flex; gap: 8px; flex-shrink: 0; }

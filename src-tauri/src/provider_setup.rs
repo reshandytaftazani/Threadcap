@@ -2,6 +2,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{path::{Path, PathBuf}, process::Stdio, time::Duration};
 use tokio::process::Command;
+use vibe_island_codex::provider_config::{supports_antigravity, ANTIGRAVITY_VERSIONS};
 
 #[derive(Deserialize)]
 #[serde(rename_all="lowercase")]
@@ -25,7 +26,10 @@ pub fn configure(provider: &Provider, path: &Path, helper: &Path, port: u16) -> 
 }
 
 pub async fn execute(provider: Provider, action: crate::codex_setup::Action, port: u16) -> Result<Value,String> {
-    let (binary, expected) = match provider { Provider::Antigravity => ("agy.exe","1.5.9"), Provider::Opencode => ("opencode.exe","2.2.7 or 2.3.0") };
+    let (binary, expected) = match provider {
+        Provider::Antigravity => ("agy.exe", ANTIGRAVITY_VERSIONS),
+        Provider::Opencode => ("opencode.exe", "2.2.7 or 2.3.0"),
+    };
     let executable = if matches!(provider,Provider::Opencode) {
         std::env::var_os("APPDATA").map(PathBuf::from).map(|base|base.join("npm/node_modules/@opencode/cli/bin/opencode.exe")).filter(|path|path.is_file()).unwrap_or_else(||PathBuf::from(binary))
     } else { PathBuf::from(binary) };
@@ -34,7 +38,11 @@ pub async fn execute(provider: Provider, action: crate::codex_setup::Action, por
     #[cfg(windows)] command.creation_flags(0x08000000);
     let output=tokio::time::timeout(Duration::from_secs(5),command.output()).await.map_err(|_|"CLI detection timed out")?.map_err(|_|format!("{binary} is unavailable on PATH. Install it and restart Threadcap."))?;
     let version=String::from_utf8_lossy(&output.stdout).trim().to_owned();
-    let supported=output.status.success() && version.split_whitespace().last().is_some_and(|v|match provider {Provider::Antigravity=>v.trim_start_matches('v')=="1.5.9",Provider::Opencode=>matches!(v.trim_start_matches('v'),"2.2.7"|"2.3.0")});
+    let supported = output.status.success() && match provider {
+        Provider::Antigravity => supports_antigravity(&version),
+        Provider::Opencode => version.split_whitespace().last().is_some_and(|v|
+            matches!(v.trim_start_matches('v'), "2.2.7" | "2.3.0")),
+    };
     let path=profile(&provider)?;
     if matches!(action,crate::codex_setup::Action::Connect) {
         if !supported { return Err(format!("Detected {version}; this adapter targets {expected}. Configuration was preserved.")); }

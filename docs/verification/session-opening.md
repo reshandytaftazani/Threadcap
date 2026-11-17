@@ -1,8 +1,22 @@
 # Sessions-first explicit opening
 
-Status: implemented, verified in a current native smoke build, and installed locally. Not published.
+Current source adds the single-Working-session exception and Connect all. The installation record below describes the earlier overview-first baseline.
 
-## Approved behavior
+## Current preview checks
+
+The isolated Windows build passed 13 opening checks and 14 setup checks. Hover stayed compact, a strip click focused the sole live Working session, and multiple rows or the shortcut opened the overview. Fresh questions and approvals still revealed their own detail under the existing attention policy.
+
+Connect all registered Codex and OpenCode in isolated profiles even when malformed Antigravity configuration made its setup fail. A retry registered the installed Antigravity CLI 1.5.10 and preserved unrelated hooks and the disabled status-line preference. Codex's owned hook definitions stayed stable on reconnect. The UI reported Connected after a fresh fixture event from the native observer. Eleven quota fixture checks and eight process-lifetime fixture checks also passed. These checks establish registration and native fixture handling. An authenticated interactive Antigravity run and first-time user acceptance remain pending. No model turn or automated trust action ran.
+
+The bundled helper also registered the Antigravity hooks and status line in an isolated profile. A real isolated OpenCode 2.3.0 server loaded the plugin and reported session creation, question forms, and deletion. Nine native request presentation checks passed against that server.
+
+The settled Agents and Codex setup captures are `artifacts/connect-all-native.png` and `artifacts/codex-connect-native.png`. First-time user acceptance with each advertised provider remains the public release gate.
+
+The local preview installer is `src-tauri/target/release/bundle/nsis/Threadcap_0.8.4_x64-setup.exe`. Its SHA-256 is `c344be11a807dfee3a2aacaba66e452fe6688ab284aae4fd579b3b7a4b0c9ef9`. The update completed with exit code 0.
+
+All 55 native checks were repeated successfully using the installed production executable with isolated profiles. Its SHA-256 is `cf887a84e422b1f16c5ea6336160e180c5943b42cbbaff5ae9cf9b13f6e0ff43`. After the tests, Threadcap restarted with its normal profile. Verification found one installation, one running host, and one loopback listener owned by that host. All eight checked provider configuration files, 21 saved session identities, and 30 deletion guards survived the update. The installed and managed helpers match the new build.
+
+## Earlier overview-first baseline
 
 Clicking the compact strip or invoking its hotkey opens the Sessions overview, with no selected row. A pending request or completed result no longer sends explicit opening directly into one provider's detail. Choosing a row still opens that row. Fresh questions and approvals retain their existing automatic reveal preference, replay suppression, and interaction protections.
 

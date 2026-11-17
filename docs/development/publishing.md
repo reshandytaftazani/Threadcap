@@ -40,6 +40,7 @@ Inspect the actual GitHub run and download/check its artifact. Local success doe
 
 ## Public launch checklist
 
+- Run a private installer preview with first-time users. Confirm they can use Connect all, complete any provider-required step, and see their first session without guidance. Use the provider versions advertised for the release.
 - At public launch, enable private vulnerability reporting and verify that the reporting route in [SECURITY.md](../../SECURITY.md) is available. It may not be available while the repository is private. See [GitHub's instructions](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository).
 - Enable applicable GitHub secret-scanning/push-protection features and review repository settings. Do not claim these settings are enabled merely because this file exists.
 - Confirm license/notices and dependency redistribution requirements, the capability matrix, sanitization, and CI results.

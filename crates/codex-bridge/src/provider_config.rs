@@ -1,6 +1,12 @@
 use anyhow::{Context,Result};
 use std::path::Path;
 
+pub const ANTIGRAVITY_VERSIONS: &str = "1.5.9 or 1.5.10";
+
+pub fn supports_antigravity(version: &str) -> bool {
+    matches!(version.trim().trim_start_matches('v'), "1.5.9" | "1.5.10")
+}
+
 pub fn antigravity(path:&Path,helper:&Path,port:u16)->Result<()> {
     use serde_json::{json,Value};
     let mut config:Value=if path.is_file(){serde_json::from_slice(&std::fs::read(path)?)?}else{json!({})};

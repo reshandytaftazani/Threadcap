@@ -102,7 +102,13 @@ fn home(override_path: Option<PathBuf>) -> Result<PathBuf> {
 fn install_antigravity(port:u16,monitoring:bool)->Result<serde_json::Value> {
     let mut cli=Command::new("agy.exe");cli.arg("--version");
     #[cfg(windows)] {use std::os::windows::process::CommandExt;cli.creation_flags(0x08000000);}
-    let version=cli.output()?;anyhow::ensure!(version.status.success() && String::from_utf8_lossy(&version.stdout).trim()=="1.5.9","Antigravity version is not verified; configuration was preserved");
+    let version = cli.output()?;
+    anyhow::ensure!(
+        version.status.success()
+            && vibe_island_codex::provider_config::supports_antigravity(&String::from_utf8_lossy(&version.stdout)),
+        "Antigravity version is not verified (expected {}); configuration was preserved",
+        vibe_island_codex::provider_config::ANTIGRAVITY_VERSIONS
+    );
     let cache=state::default_path(port)?;let directory=cache.parent().context("Adapter directory unavailable")?.join("bridge");
     let helper=config::stage_executable(&std::env::current_exe()?,&directory)?;
     let profile=PathBuf::from(std::env::var_os("USERPROFILE").context("USERPROFILE unavailable")?);

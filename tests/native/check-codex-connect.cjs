@@ -1,65 +1,90 @@
-// Run the Settings action against an isolated native host and temporary Codex profile. No model calls.
-const { spawn, execFileSync } = require('node:child_process');
-const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
-const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+// Exercises batch and individual registration with installed CLIs and isolated configuration.
+const {execFileSync}=require('node:child_process');
+const fs=require('node:fs'),path=require('node:path');
+const {startNative}=require('./native-harness.cjs');
+
 async function main() {
-  const root = path.resolve(__dirname, '../..'), temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'island-connect-'));
-  const home = path.join(temporary, 'codex'), hooksFile = path.join(home, 'hooks.json');
-  fs.mkdirSync(home);
-  const original = JSON.stringify({ hooks: { SessionStart: [{ hooks: [{ type:'command', command:'echo unrelated-user-hook' }] }] } });
-  fs.writeFileSync(hooksFile, original);
-  for (const port of [37899, 9229]) {
-    await new Promise((resolve,reject)=>{
-      const probe=require('node:net').createServer();
-      probe.once('error',()=>reject(Error('Isolated test port is in use: '+port)));
-      probe.listen({host:'127.0.0.1',port,exclusive:true},()=>probe.close(resolve));
-    });
-  }
-  const env = { ...process.env, LOCALAPPDATA:temporary, CODEX_HOME:home, VIBE_ISLAND_PORT:'37899', VIBE_ISLAND_STATE_FILE:':memory:', VIBE_ISLAND_USAGE_DISABLED:'1', WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:'--remote-debugging-port=9229 --remote-debugging-address=127.0.0.1', WEBVIEW2_USER_DATA_FOLDER:path.join(temporary,'webview') };
-  const executable = process.argv[2] ? path.resolve(process.argv[2]) : path.join(root,'src-tauri/target/release/vibe-island.exe');
-  const app = spawn(executable, [], { env, windowsHide:true, stdio:['ignore','pipe','pipe'] });
-  let log=''; app.stdout.on('data',data=>log+=data); app.stderr.on('data',data=>log+=data);
-  let socket;
+  const host=await startNative('provider-connect');
+  const hooks=path.join(host.env.CODEX_HOME,'hooks.json');
+  const original=JSON.stringify({hooks:{SessionStart:[{hooks:[{type:'command',command:'echo unrelated-user-hook'}]}]}});
+  const state="document.getElementById('provider-connect-state').textContent";
+  const note="document.getElementById('provider-connect-note').textContent";
+  const checks=[];
+  const check=(name,passed)=>{checks.push({name,passed:!!passed});if(!passed)throw Error(name);};
+  const button=id=>`document.querySelector('[data-connect-provider="${id}"]')`;
+  const invokeProvider=id=>host.evaluate(`${button(id)}.click(); ${button(id)}.click()`);
+  const expect=value=>host.until(`${state}===${JSON.stringify(value)}`);
+  const back=()=>host.evaluate("document.getElementById('settings-back').click()");
+  const connectAll="document.getElementById('connect-all')";
+  const status=id=>`document.querySelector('[data-provider-status="${id}"]').textContent`;
   try {
-    let page;
-    for (let i=0;i<150;i++) { try { page = (await (await fetch('http://127.0.0.1:9229/json')).json()).find(p=>p.title==='Vibe Island'); if (page) break; } catch {} await wait(50); }
-    if (!page) throw Error('Isolated native host did not start. Close other island instances first. '+log);
-    socket = new WebSocket(page.webSocketDebuggerUrl);
-    await new Promise((resolve,reject)=>{ socket.onopen=resolve; socket.onerror=reject; });
-    let id=0; const pending=new Map();
-    socket.onmessage=({data})=>{ const msg=JSON.parse(data),job=pending.get(msg.id); if(job) {pending.delete(msg.id);clearTimeout(job.timer);msg.error?job.reject(Error(msg.error.message)):job.resolve(msg.result);} };
-    const send=(method,params={})=>new Promise((resolve,reject)=>{const current=++id,timer=setTimeout(()=>reject(Error('CDP timeout')),20000);pending.set(current,{resolve,reject,timer});socket.send(JSON.stringify({id:current,method,params}));});
-    const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value;};
-    const until=async expression=>{for(let i=0;i<200;i++){if(await evaluate(expression))return true;await wait(50);}return false;};
-    const checks=[],check=(name,passed)=>checks.push({name,passed:Boolean(passed)});
-    await until('Boolean(window.IslandDesktop && window.IslandPreview)');
-    await evaluate("document.getElementById('settings-button').click()");
-    await until("document.getElementById('connect-codex') && !document.getElementById('connect-codex').disabled");
-    check('Opening Settings checks status without modifying hooks',fs.readFileSync(hooksFile,'utf8')===original);
-    check('Unregistered integration offers Connect',await evaluate("document.getElementById('connect-codex').textContent==='Connect'"));
-    await evaluate("document.getElementById('connect-codex').focus();document.getElementById('connect-codex').click();document.getElementById('connect-codex').click()");
-    check('Connect finishes through the real native command',await until("!document.getElementById('connect-codex').disabled && document.getElementById('codex-integration-status').textContent==='Registered'"));
-    const configured=JSON.parse(fs.readFileSync(hooksFile,'utf8')), stable=path.join(temporary,'VibeIsland/bridge/vibe-island-codex.exe');
-    check('The bundled helper stages a portable copy and ten handlers',fs.existsSync(stable) && Object.values(configured.hooks).flat().flatMap(g=>g.hooks).filter(h=>h.commandWindows?.includes(' --integration-id ') || h.commandWindows?.startsWith('powershell.exe')).length===10);
-    check('Existing hooks and an exact backup are preserved',configured.hooks.SessionStart[0].hooks[0].command==='echo unrelated-user-hook' && fs.readdirSync(home).filter(f=>f.endsWith('.bak')).some(f=>fs.readFileSync(path.join(home,f),'utf8')===original));
-    check('Registered status requires explicit Codex review and retains keyboard focus',await evaluate("document.getElementById('codex-setup-note').textContent.includes('/hooks') && document.activeElement===document.getElementById('connect-codex')"));
-    const good=fs.readFileSync(hooksFile);
-    fs.writeFileSync(hooksFile,'{ invalid json');
-    await evaluate("document.getElementById('connect-codex').click()");
-    check('Invalid user configuration is preserved and produces a retryable error',await until("!document.getElementById('connect-codex').disabled && document.getElementById('codex-setup-note').classList.contains('is-error')") && fs.readFileSync(hooksFile,'utf8')==='{ invalid json');
-    fs.writeFileSync(hooksFile,good);
-    await evaluate("document.getElementById('connect-codex').click()");
-    check('Reconnect recovers from errors without duplicate hooks',await until("!document.getElementById('connect-codex').disabled && !document.getElementById('codex-setup-note').classList.contains('is-error')") && fs.readFileSync(hooksFile).equals(good));
-    const hook = name => execFileSync(stable,['hook','--port','37899'],{env,windowsHide:true,input:JSON.stringify({hook_event_name:name,session_id:'connect-fixture',cwd:temporary,model:'fixture-model'}),timeout:5000});
-    hook('SessionStart');
-    check('A fresh real adapter report promotes the row to Monitor',await until("document.getElementById('codex-integration-status').textContent==='Monitor'"));
-    hook('SessionEnd');
-    check('Disconnection returns to Registered without forgetting setup',await until("document.getElementById('codex-integration-status').textContent==='Registered'"));
-    const clip=await evaluate("(()=>{const r=document.getElementById('island-surface').getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,scale:1};})()");
-    const shot=await send('Page.captureScreenshot',{format:'png',clip});
-    fs.mkdirSync(path.join(root,'artifacts'),{recursive:true});fs.writeFileSync(path.join(root,'artifacts/codex-connect-native.png'),Buffer.from(shot.data,'base64'));
-    const result={passed:checks.filter(c=>c.passed).length,failed:checks.filter(c=>!c.passed),checks,modelCalls:0};
-    fs.writeFileSync(path.join(root,'artifacts/codex-connect-results.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));if(result.failed.length)process.exitCode=1;
-  } finally { socket?.close(); app.kill(); }
+    fs.mkdirSync(host.env.CODEX_HOME,{recursive:true});
+    fs.writeFileSync(hooks,original);
+    await host.evaluate("document.getElementById('settings-button').click()");
+    check('Opening Settings preserves existing hooks',fs.readFileSync(hooks,'utf8')===original);
+    const agyHooks=path.join(host.temp,'.gemini/config/hooks.json');
+    const agySettings=path.join(host.temp,'.gemini/antigravity-cli/settings.json');
+    fs.mkdirSync(path.dirname(agyHooks),{recursive:true});
+    fs.mkdirSync(path.dirname(agySettings),{recursive:true});
+    fs.writeFileSync(agyHooks,'{ invalid json');
+    fs.writeFileSync(agySettings,JSON.stringify({statusLine:{enabled:false,command:'existing command'}}));
+    await host.evaluate(`${connectAll}.focus(); ${connectAll}.click(); ${connectAll}.click()`);
+    check('A single batch remains in Agents and continues past an Antigravity configuration error',
+      await host.until(`${connectAll}.getAttribute('aria-busy')==='false' &&
+        ${status('codex')}==='Waiting for activity' && ${status('opencode')}==='Waiting for activity' &&
+        ${status('antigravity')}==='Setup issue' && !document.getElementById('agents-overview').hidden`));
+    check('A failed registration preserves the malformed file and leaves Connect all available',
+      fs.readFileSync(agyHooks,'utf8')==='{ invalid json' && await host.evaluate(`!${connectAll}.disabled`));
+    const codexBeforeRetry=fs.statSync(hooks).mtimeMs;
+    const opencodeTui=path.join(host.temp,'config/opencode/plugins/threadcap-monitor/tui.js');
+    const opencodeBeforeRetry=fs.statSync(opencodeTui).mtimeMs;
+    fs.writeFileSync(agyHooks,'{"existing":{"enabled":false}}');
+    await host.evaluate(`${connectAll}.click()`);
+    check('Connect all retries Antigravity without rewriting Codex or OpenCode',
+      await host.until(`${connectAll}.disabled && ${connectAll}.getAttribute('aria-busy')==='false' &&
+        ${status('antigravity')}==='Waiting for activity'`) &&
+      fs.statSync(hooks).mtimeMs===codexBeforeRetry && fs.statSync(opencodeTui).mtimeMs===opencodeBeforeRetry);
+    const agy=JSON.parse(fs.readFileSync(agyHooks,'utf8'));
+    check('Antigravity registers all observers while preserving existing hooks and disabled status line',
+      agy.existing.enabled===false && ['SessionStart','PreInvocation','PostToolUse','Stop'].every(key=>agy['threadcap-monitor'][key].length===1) &&
+      JSON.parse(fs.readFileSync(agySettings,'utf8')).statusLine.command==='existing command');
+    check('The overview directs new users to restart and review in Codex only if prompted',
+      await host.evaluate("document.getElementById('settings-note').textContent.includes('If Codex asks for review, open /hooks')"));
+    await host.wait(450);
+    const overviewClip=await host.evaluate("(()=>{const r=document.getElementById('island-surface').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,scale:1};})()");
+    const overview=await host.send('Page.captureScreenshot',{format:'png',clip:overviewClip});
+    fs.writeFileSync(path.join(host.root,'artifacts/connect-all-native.png'),Buffer.from(overview.data,'base64'));
+    await host.evaluate("document.querySelector('[data-provider=codex]').click()");
+    check('Codex explains its own review and offers no confirmation gate',await host.evaluate(`${note}.includes('/hooks') && !document.getElementById('setup-copy').hidden && !document.querySelector('#setup-reviewed,#provider-reviewed')`));
+    await host.wait(450);
+    const clip=await host.evaluate("(()=>{const r=document.getElementById('island-surface').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,scale:1};})()");
+    const screenshot=await host.send('Page.captureScreenshot',{format:'png',clip});
+    fs.writeFileSync(path.join(host.root,'artifacts/codex-connect-native.png'),Buffer.from(screenshot.data,'base64'));
+    const configured=JSON.parse(fs.readFileSync(hooks,'utf8'));
+    const helper=path.join(host.temp,'VibeIsland/bridge/vibe-island-codex.exe');
+    check('Registration preserves the user hook and stages ten owned handlers',fs.existsSync(helper) &&
+      configured.hooks.SessionStart[0].hooks[0].command==='echo unrelated-user-hook' &&
+      Object.values(configured.hooks).flat().flatMap(group=>group.hooks).filter(h=>h.commandWindows?.startsWith('powershell.exe')).length===10);
+    const registered=fs.readFileSync(hooks);
+    const retry=()=>host.evaluate("document.getElementById('provider-connect').click()");
+    fs.writeFileSync(hooks,'{ invalid json');
+    await retry();
+    check('Malformed configuration produces a retryable issue and preserves the file',await expect('Setup issue') && fs.readFileSync(hooks,'utf8')==='{ invalid json');
+    fs.writeFileSync(hooks,registered);
+    await retry();
+    check('Reconnect retains the same trusted hook definitions',await expect('Waiting for activity') && fs.readFileSync(hooks).equals(registered));
+    execFileSync(helper,['hook','--port',String(host.port)],{env:host.env,windowsHide:true,input:JSON.stringify({
+      hook_event_name:'SessionStart',session_id:'connect-fixture',cwd:host.temp,source:'startup'
+    }),timeout:5000});
+    check('A fresh adapter event reports Connected without another click',await expect('Connected'));
+    await back();await invokeProvider('opencode');
+    check('One OpenCode click registers and requests a CLI restart',await expect('Waiting for activity') && await host.evaluate(`${note}.includes('Restart OpenCode') && document.getElementById('setup-copy').hidden`));
+    check('OpenCode setup writes its plugin into the isolated configuration',fs.existsSync(path.join(host.temp,'config/opencode/plugins/threadcap-monitor/tui.js')));
+    const agyVersion=await host.evaluate("IslandDesktop.providerIntegration('antigravity','status')");
+    check('Native detection confirms the actual installed Antigravity version and registration',agyVersion.supported && agyVersion.registered);
+    console.log(JSON.stringify({checks,antigravityVersion:agyVersion.version},null,2));
+  } finally {
+    await host.close();
+  }
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

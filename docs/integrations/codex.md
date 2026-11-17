@@ -23,8 +23,8 @@ Threadcap includes a Windows Rust adapter for Codex CLI hooks, with in-app setup
 Use native Windows Codex CLI on PATH. **0.169.0** is the verified version; compatibility with newer versions is not guaranteed. Version 0.169.0 is the verified contract; later versions still need compatibility testing. WSL and remote Codex instances are not supported by this Windows adapter.
 
 1. Install and start Threadcap. The installer includes `vibe-island-codex.exe` beside the application executable. The technical helper name remains stable for compatibility. The same helper is available as a standalone release artifact.
-2. Open **Settings > Agents > Codex CLI** and press **Connect**. The app runs the bundled helper, preserves other hooks, and shows errors with a retry action. Opening Settings checks diagnostics without modifying configuration. `Registered` confirms configuration, not trust; only fresh live session events produce `Monitor`. Use `Reconnect` to refresh registration and the stable helper after an update. Browser Preview cannot run setup.
-3. Restart Codex and use `/hooks` to review and trust the Threadcap observer, retaining its legacy `vibe-island` integration tag. Codex requires this review; installing configuration does not grant trust. Do not bypass hook review.
+2. Open **Settings > Agents** and press **Connect all** or select **Connect** for Codex CLI. Threadcap runs the bundled helper and preserves other hooks. **Waiting for activity** confirms registration. **Connected** requires fresh session events. Use **Reconnect** to refresh registration and the stable helper after an update.
+3. Restart Codex. If Codex requests review, use `/hooks` to review and trust the Threadcap observer with its legacy `vibe-island` integration tag. Codex owns its hook trust decisions.
 4. Run an ordinary Codex session. New hook events should appear in the island.
 
 For command-line setup instead, open PowerShell in the helper's directory and run:

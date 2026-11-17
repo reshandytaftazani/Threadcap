@@ -4,6 +4,10 @@ This file summarizes implemented releases. Detailed verification records remain 
 
 ## Unreleased
 
+- Set up Codex, Antigravity, and OpenCode with one Connect all action. Show individual outcomes and verify each connection with fresh activity. Keep individual setup and Codex's `/hooks` review when required.
+- Accept Antigravity CLI 1.5.10 in desktop setup and the bundled setup helper, alongside 1.5.9.
+- Open the sole Working session on a strip click. Other clicks and the shortcut open the Sessions overview.
+
 - List and link standalone Windows Console windows and accessible Windows Terminal tabs alongside local Orca panes. Confirm foreground focus before dismissing the picker and label window-only navigation explicitly.
 
 - Observe process exit for Codex sessions started with the bundled PowerShell local-client launcher. Archive confirmed exits even when Windows closes the terminal before Codex can send `SessionEnd`.

@@ -118,7 +118,10 @@
   let retained = [], autoOpen = preferences.autoOpen !== false, cooldownTimer;
   let pendingArchiveDelete = null, archiveDeleting = false, archiveDeleteEpoch = 0, archiveDeleteScroll = 0;
   const providerSetups = new Map();
-  let providerSetupBusy = false;
+  const setupProviders = ['codex', 'antigravity', 'opencode'];
+  let providerSetupBusy = null;
+  let connectingAll = false;
+  let connectAllAttempted = false;
   const rowMap = new Map();
   const avatarVisibility = new IntersectionObserver((entries) => {
     entries.forEach((entry) => entry.target.classList.toggle('is-offscreen', !entry.isIntersecting));
@@ -332,8 +335,13 @@
     focused = true; selected = id; syncRowPresentation();
     setExpanded(true, focus); changeViewContent();
   }
-  function openFromCompact() {
-    showOverview();
+  function openFromCompact(preferWorking = false) {
+    const [only] = sessions;
+    if (preferWorking && sessions.length === 1 && displayState(only) === 'running') {
+      showFocused(only.sessionId, true);
+    } else {
+      showOverview();
+    }
     $('collapse-button').focus({ preventScroll: true });
   }
   function stopTour() {
@@ -605,85 +613,67 @@
     $('setting-bezel').checked = bezel;
     fitSurface();
   }
-  let codexSetup = null, codexSetupBusy = false, codexSetupError = '';
-  let setupStep = 0, setupReviewed = false, setupStartedAt = Date.now(), setupGuideStarted = false;
-  function renderSetupGuide() {
-    const guide = $('codex-guide');
-    guide.hidden = providerPage !== 'codex' || Boolean(terminalPickerSession) || preview || !window.IslandDesktop?.codexIntegration;
-    if (guide.hidden) return;
-    const verified = setupReviewed && !offline && sessions.some(s => s.agentId === 'codex' && s.connectionStatus === 'connected' && s.eventKind !== 'recovery' && s.lastSeenAt > setupStartedAt);
-    const titles = ['Find Codex CLI', 'Register monitoring hooks', 'Review trust in Codex', verified ? 'Activity verified' : 'Waiting for fresh activity'];
-    const notes = ['Check the installed CLI before changing configuration.', 'Connect preserves other hooks and creates a configuration backup.', 'Restart Codex, run /hooks, and review the Threadcap observer (legacy vibe-island tag). Trust stays under your control.', verified ? 'A fresh Codex event arrived during this setup. Approvals and replies remain in Codex.' : 'Send a prompt from your Codex terminal. Registration and quota readings do not verify activity.'];
-    $('setup-step-title').textContent = titles[setupStep];
-    $('setup-step-note').textContent = codexSetupError || notes[setupStep];
-    document.querySelectorAll('[data-setup-stage]').forEach(el => {
-      const index = Number(el.dataset.setupStage);
-      el.classList.toggle('is-complete', index < setupStep || (index === 3 && verified));
-      if (index === setupStep) el.setAttribute('aria-current', 'step'); else el.removeAttribute('aria-current');
-    });
-    const actions = { 'setup-detect': setupStep === 0, 'setup-connect': setupStep === 1, 'setup-copy': setupStep === 2, 'setup-reviewed': setupStep === 2, 'setup-verify': setupStep === 3 && !verified, 'setup-back': setupStep > 0 };
-    for (const [id, visible] of Object.entries(actions)) { $(id).hidden = !visible; $(id).disabled = codexSetupBusy; }
-    $('setup-connect').textContent = codexSetup?.registered ? 'Reconnect' : 'Connect';
+  function providerConnected(id) {
+    const started = providerSetups.get(id)?.started || 0;
+    return !offline && sessions.some(s => s.agentId === id && s.connectionStatus === 'connected' &&
+      s.terminalStatus !== 'closed' && s.eventKind !== 'recovery' && s.lastSeenAt > started);
   }
-  async function advanceSetup(action) {
-    if (codexSetupBusy) return;
-    if (action === 'detect') {
-      await checkCodexSetup('status');
-      if (!codexSetupError && codexSetup?.cliAvailable) setupStep = 1;
-      else if (!codexSetupError) codexSetupError = 'Codex CLI is unavailable. Install it, then retry detection.';
-    } else if (action === 'connect') {
-      setupStartedAt = Date.now(); setupReviewed = false;
-      await checkCodexSetup('connect');
-      if (!codexSetupError && codexSetup?.registered) setupStep = 2;
-    } else if (action === 'reviewed') { setupReviewed = true; setupStep = 3; }
-    else if (action === 'back') setupStep = Math.max(0, setupStep - 1);
-    else if (action === 'verify') await checkCodexSetup('status');
-    renderSetupGuide(); changeViewContent(); fitSurface();
-    if (settingsOpen && providerPage === 'codex') $('codex-guide').querySelector('button:not([hidden]):not(:disabled)')?.focus({ preventScroll: true });
+  function setupAvailable(id) {
+    return !preview && Boolean(id === 'codex' ? window.IslandDesktop?.codexIntegration : window.IslandDesktop?.providerIntegration);
   }
-  function updateCodexSetup() {
-    const button = $('connect-codex'), status = $('codex-integration-status'), note = $('codex-setup-note');
-    if (!button) return;
-    const linked = !offline && sessions.some((s) => s.agentId === 'codex' && s.connectionStatus === 'connected');
-    button.disabled = codexSetupBusy;
-    button.textContent = codexSetupBusy ? 'Checking…' : codexSetup?.registered ? 'Reconnect' : 'Connect';
-    button.setAttribute('aria-label', codexSetup?.registered ? 'Reconnect Codex CLI' : 'Connect Codex CLI');
-    button.setAttribute('aria-busy', String(codexSetupBusy));
-    status.textContent = linked ? 'Monitor' : codexSetupBusy ? 'Checking…' : codexSetup?.registered ? 'Registered' : 'Not connected';
-    note.classList.toggle('is-error', Boolean(codexSetupError));
-    const message = codexSetupError || (linked
-      ? 'Codex activity is connected. Approve and reply in Codex.'
-      : codexSetup?.registered
-        ? 'Restart Codex, open /hooks, and review the Threadcap observer (legacy vibe-island tag). Then send a prompt. Approval stays in Codex.'
-        : 'Connect registers monitoring hooks and backs up existing configuration. Codex will ask you to review them in /hooks.');
-    if (note.textContent !== message) note.textContent = message;
-    renderSetupGuide();
-    window.IslandDesktop?.scheduleGeometry();
+  function setupLabel(id) {
+    const setup = providerSetups.get(id);
+    if (preview) return 'Preview';
+    if (providerSetupBusy === id) return 'Connecting…';
+    if (setup?.error) return 'Setup issue';
+    if (providerConnected(id)) return 'Connected';
+    return setup?.registered ? 'Waiting for activity' : 'Not connected';
+  }
+  function needsSetup(id) {
+    const setup = providerSetups.get(id);
+    return setupAvailable(id) && !providerConnected(id) && (!setup?.registered || Boolean(setup.error));
+  }
+  function refreshProviderSetup() {
+    for (const status of $('settings-integrations').querySelectorAll('[data-provider-status]')) {
+      status.textContent = setupLabel(status.dataset.providerStatus);
+    }
+    for (const button of $('settings-integrations').querySelectorAll('[data-connect-provider]')) {
+      setConnectButton(button, button.dataset.connectProvider);
+    }
+    const all = $('connect-all');
+    all.hidden = !setupProviders.some(setupAvailable);
+    all.disabled = Boolean(providerSetupBusy) || !setupProviders.some(needsSetup);
+    all.textContent = connectingAll ? 'Connecting…' : 'Connect all';
+    all.setAttribute('aria-busy', String(connectingAll));
+    const waiting = setupProviders.some(id => setupLabel(id) === 'Waiting for activity');
+    const issues = setupProviders.some(id => providerSetups.get(id)?.error);
+    let note = preview ? 'Simulated sessions. Preview controls never send actions to real agents.'
+      : 'Set up the supported CLIs installed on this PC.';
+    if (connectAllAttempted && !connectingAll) {
+      note = waiting ? 'Restart the CLIs you just set up. If Codex asks for review, open /hooks in Codex.' : '';
+      if (issues) note += (note ? ' ' : '') + 'Select a provider with a setup issue for details.';
+    }
+    if ($('settings-note').textContent !== note) $('settings-note').textContent = note;
+    renderProviderSetup();
     if (settingsOpen) fitSurface();
   }
-  async function checkCodexSetup(action) {
-    if (preview || !window.IslandDesktop?.codexIntegration || codexSetupBusy) return;
-    const trigger = $('connect-codex'), restoreFocus = document.activeElement === trigger;
-    codexSetupBusy = true; codexSetupError = ''; updateCodexSetup();
-    try {
-      codexSetup = await window.IslandDesktop.codexIntegration(action);
-      codexSetupError = codexSetup.error || '';
-    } catch (error) { codexSetupError = String(error); }
-    finally {
-      codexSetupBusy = false; updateCodexSetup();
-      if (restoreFocus && settingsOpen && !providerPage && settingsPage === 'agents' && $('connect-codex') === trigger && document.activeElement === document.body) trigger.focus({ preventScroll: true });
-    }
+  function setConnectButton(button, id) {
+    const linked = providerSetups.get(id)?.registered || providerConnected(id);
+    const label = providerSetupBusy === id ? 'Connecting…' : linked ? 'Reconnect' : 'Connect';
+    button.textContent = label;
+    button.setAttribute('aria-label', `${label} ${avatar.names[id]} CLI`);
+    button.setAttribute('aria-busy', String(providerSetupBusy === id));
+    button.disabled = Boolean(providerSetupBusy);
   }
   function openSettings() {
     if (terminalBusy) terminalEpoch++;
     if (!settingsOpen) savedSessionView = { focused, selected, scroll: $('sessions-list').scrollTop, focus: document.activeElement, start: document.activeElement?.selectionStart, end: document.activeElement?.selectionEnd };
-    const nativeSetup = !preview && Boolean(window.IslandDesktop?.codexIntegration);
-    if (!$('settings-integrations').children.length) $('settings-integrations').innerHTML = ['codex', 'antigravity', 'opencode'].map((id) => {
-      const linked = !offline && sessions.some((s) => s.agentId === id && s.connectionStatus === 'connected');
-      const setup = nativeSetup && id === 'codex';
-      return `<div class="integration-row"><button class="integration-identity" data-provider="${id}" aria-label="${avatar.names[id]} connection and quota">${avatar.render(id, 'idle', true)}<span>${avatar.names[id]} CLI</span></button><span class="integration-controls"><span class="integration-mode" data-provider-status="${id}" ${setup ? 'id="codex-integration-status"' : ''}>${preview ? 'Preview' : linked ? 'Monitor' : 'Not connected'}</span>${setup ? '<button id="connect-codex" class="text-button" aria-describedby="codex-setup-note">Connect</button>' : nativeSetup && window.IslandDesktop?.providerIntegration ? `<button class="text-button" data-provider="${id}">Connect</button>` : ''}</span></div>${setup ? '<p id="codex-setup-note" class="settings-note codex-setup-note" role="status" aria-live="polite" aria-atomic="true"></p>' : ''}`;
-    }).join('');
-    $('settings-note').textContent = preview ? 'Simulated sessions. Preview controls never send actions to real agents.' : 'Monitoring depends on the local adapter. Interactive controls appear only when explicitly supported.';
+    if (!$('settings-integrations').children.length) {
+      $('settings-integrations').innerHTML = setupProviders.map(id => {
+        const connect = setupAvailable(id) ? `<button class="text-button" data-connect-provider="${id}">Connect</button>` : '';
+        return `<div class="integration-row"><button class="integration-identity" data-provider="${id}" aria-label="${avatar.names[id]} connection and quota">${avatar.render(id, 'idle', true)}<span>${avatar.names[id]} CLI</span></button><span class="integration-controls"><span class="integration-mode" data-provider-status="${id}"></span>${connect}</span></div>`;
+      }).join('');
+    }
     settingsOpen = true;
     $('island-surface').dataset.settings = 'true';
     $('settings-view').hidden = false; $('settings-title').hidden = false; $('settings-back').hidden = false;
@@ -694,11 +684,7 @@
     $('settings-attention').hidden = !pending;
     $('settings-attention').textContent = pending > 1 ? `View requests · ${pending}` : 'View request';
     $('settings-back').focus({ preventScroll: true });
-    if (nativeSetup) {
-      $('connect-codex').onclick = () => checkCodexSetup('connect');
-      updateCodexSetup();
-      void checkCodexSetup('status');
-    }
+    refreshProviderSetup();
   }
   function setSettingsPage(page, restore = true) {
     if (!['agents','appearance','behavior','archive'].includes(page)) return;
@@ -724,7 +710,6 @@
     pageGeometryTimer = setTimeout(() => $('island-surface').classList.remove('is-page-changing'), reduced() ? 0 : motionTime('--page') + 20);
   }
   function openProvider(id) {
-    if (id === 'codex' && !setupGuideStarted) { setupStartedAt = Date.now(); setupGuideStarted = true; }
     lastProvider = id;
     openSettings(); providerPage = id; setSettingsPage('agents');
   }
@@ -733,7 +718,6 @@
     $('terminal-picker').hidden = !terminalPickerSession;
     $('provider-usage-detail').hidden = Boolean(terminalPickerSession);
     $('provider-diagnostics').hidden = Boolean(terminalPickerSession);
-    renderSetupGuide();
     renderProviderSetup();
     if (terminalPickerSession) {
       $('provider-title').textContent = 'Choose source terminal';
@@ -743,32 +727,58 @@
     }
     $('provider-title').textContent = `${avatar.names[providerPage]} CLI`;
     $('provider-usage-detail').innerHTML = window.IslandUsage.detail(providerPage);
-    $('provider-diagnostics').textContent = providerPage === 'codex' ? codexSetupError || (codexSetup?.registered ? 'Hooks registered. Review trust in Codex using /hooks. Approval and replies remain in Codex.' : 'Return to Agents and use Connect to register monitoring hooks.') : providerPage === 'opencode' ? 'OpenCode 2.3.0 supports replies to simple questions through its connected terminal. Other forms and command approvals remain in OpenCode. Link the source terminal explicitly when needed.' : 'Monitoring only. Approvals and answers remain in the provider terminal. Account quota availability is shown below. Link the source terminal explicitly when needed.';
+    $('provider-diagnostics').textContent = providerPage === 'codex' ? 'Approvals and replies stay in Codex.' : providerPage === 'opencode' ? 'OpenCode 2.3.0 supports replies to simple questions from Threadcap.' : 'Approvals and replies stay in Antigravity.';
   }
   function renderProviderSetup() {
-    const visible = !preview && providerPage && providerPage !== 'codex' && !terminalPickerSession && Boolean(window.IslandDesktop?.providerIntegration);
+    const id = providerPage;
+    const visible = id && !terminalPickerSession && setupAvailable(id);
     $('provider-connect-guide').hidden = !visible;
     if (!visible) return;
-    const setup = providerSetups.get(providerPage) || {};
-    const verified = setup.reviewed && !offline && retained.some(s => s.agentId === providerPage && s.connectionStatus === 'connected' && s.eventKind !== 'recovery' && s.lastSeenAt > setup.started);
-    const review = providerPage === 'antigravity' ? 'Restart Antigravity, open /hooks, and review threadcap-monitor. Then send a prompt in your terminal.' : 'Review the installed Threadcap plugin and question connector. Restart OpenCode CLI to enable terminal-close detection and supported question replies, then open a session.';
-    $('provider-connect-note').textContent = providerSetupBusy ? 'Checking integration…' : setup.error || (verified ? 'Fresh activity verified. Monitoring is connected.' : setup.registered ? `${setup.version || ''} · Registered. ${review} Registration alone does not verify live activity.` : setup.version ? `${setup.version} · ${setup.supported ? 'Compatible CLI detected. Connect installs only the Threadcap observer.' : 'This version is not supported; existing configuration is preserved.'}` : 'Detect the installed CLI, connect its observer, review it, then verify fresh activity. No task is launched automatically.');
-    for (const id of ['provider-detect','provider-connect','provider-reviewed','provider-verify']) $(id).disabled = providerSetupBusy;
-    $('provider-connect').disabled = providerSetupBusy || setup.supported !== true;
-    $('provider-reviewed').hidden = !setup.registered || setup.reviewed;
-    $('provider-verify').hidden = !setup.reviewed;
-    const stage = verified ? 3 : setup.reviewed ? 3 : setup.registered ? 2 : setup.version ? 1 : 0;
-    $('provider-connect-guide').querySelectorAll('li').forEach((el,index) => { el.dataset.current = String(index === stage); el.dataset.complete = String(index < stage); });
+    const setup = providerSetups.get(id);
+    const state = setupLabel(id);
+    const nextAction = id === 'codex'
+      ? 'Restart Codex. If Codex asks for review, open /hooks and review the Threadcap observer. Then use Codex normally.'
+      : id === 'antigravity'
+        ? 'Restart Antigravity. Complete any review Antigravity requests, then use it normally.'
+        : 'Restart OpenCode CLI and open a session.';
+    $('provider-connect-state').textContent = state;
+    $('provider-connect-note').textContent = providerSetupBusy === id
+      ? 'Checking the CLI and registering the Threadcap integration.'
+      : setup?.error || (state === 'Connected'
+        ? 'Threadcap received live activity.'
+        : setup?.registered
+          ? nextAction
+          : 'Connect checks your CLI and sets up the Threadcap integration.');
+    $('setup-copy').hidden = id !== 'codex' || !setup?.registered || state === 'Connected';
+    setConnectButton($('provider-connect'), id);
   }
-  async function providerSetup(action) {
-    const id = providerPage;
-    if (providerSetupBusy || !id || id === 'codex' || !window.IslandDesktop?.providerIntegration) return;
-    const previous = providerSetups.get(id) || { started: Date.now() };
-    if (action === 'review') { providerSetups.set(id,{ ...previous, reviewed: true }); renderProviderSetup(); fitSurface(); return; }
-    providerSetupBusy = true; renderProviderSetup();
-    try { const result = await window.IslandDesktop.providerIntegration(id,action); providerSetups.set(id,{ ...previous, ...result, error: '', ...(action === 'connect' ? { reviewed: false, started: Date.now() } : {}) }); }
-    catch (error) { providerSetups.set(id,{ ...previous, error: String(error) }); }
-    finally { providerSetupBusy = false; if (settingsOpen && providerPage === id) { renderProviderSetup(); fitSurface(); } }
+  async function connectProviders(ids, trigger, all = false) {
+    if (providerSetupBusy || !ids.length || !ids.every(setupAvailable)) return;
+    connectingAll = all;
+    connectAllAttempted ||= all;
+    try {
+      for (const id of ids) {
+        const started = Date.now();
+        const previous = providerSetups.get(id);
+        providerSetupBusy = id;
+        refreshProviderSetup();
+        try {
+          const result = id === 'codex' ? await window.IslandDesktop.codexIntegration('connect')
+            : await window.IslandDesktop.providerIntegration(id, 'connect');
+          providerSetups.set(id, { ...result, started, error: result.error || (result.registered ? '' : 'Threadcap could not verify registration. Try Connect again.') });
+        } catch (error) {
+          providerSetups.set(id, { ...previous, error: String(error) });
+        }
+      }
+    } finally {
+      providerSetupBusy = null;
+      connectingAll = false;
+      refreshProviderSetup();
+      if (settingsOpen && trigger?.getClientRects().length && document.activeElement === document.body) {
+        const focusTarget = trigger.disabled ? $('settings-integrations').querySelector('[data-provider]') : trigger;
+        focusTarget?.focus({ preventScroll: true });
+      }
+    }
   }
   function leaveSettings(restore) {
     if (!settingsOpen) return;
@@ -857,7 +867,7 @@
   function markDisconnected() {
     sessionModel.disconnect();
     offline = true;
-    if (settingsOpen) updateCodexSetup();
+    if (settingsOpen) refreshProviderSetup();
     $('connection-label').innerHTML = '<span class="connection-dot"></span>Reconnecting';
     renderSessions();
   }
@@ -884,7 +894,7 @@
     retained = sessions;
     sessions = retained.filter(s => !s.archived);
     offline = sessionModel.connectionState !== 'connected';
-    if (settingsOpen) updateCodexSetup();
+    if (settingsOpen) refreshProviderSetup();
     $('connection-label').innerHTML = '<span class="connection-dot" style="background:var(--green)"></span>Local';
     const reveal = presentation.ingest({ ...result, sessions: retained });
     if (result.snapshot) retained.filter(s => ['completed','failed'].includes(s.status)).forEach(s => silentPoses.add(`${s.sessionId}:${s.status}`));
@@ -1036,7 +1046,7 @@
   });
   $('state-picker').addEventListener('change', (event) => setLabState(event.target.value));
   $('replay-button').addEventListener('click', () => setLabState($('state-picker').value, true));
-  $('compact-view').addEventListener('click', openFromCompact);
+  $('compact-view').addEventListener('click', () => openFromCompact(true));
   $('collapse-button').addEventListener('click', () => setExpanded(false, true));
   $('view-button').addEventListener('click', () => { stopTour(); if (expanded) setExpanded(false); else showOverview(); });
   $('all-sessions-button').addEventListener('click', () => { showOverview(); $('collapse-button').focus({ preventScroll: true }); });
@@ -1047,21 +1057,24 @@
   $('setting-bezel').addEventListener('change', (event) => { setBezel(event.target.checked); savePreferences(); });
   $('settings-button').addEventListener('click', openSettings);
   $('settings-back').addEventListener('click', backFromSettings);
+  $('connect-all').addEventListener('click', event => void connectProviders(setupProviders.filter(needsSetup), event.currentTarget, true));
   document.querySelectorAll('[data-settings-page]').forEach(el => el.addEventListener('click', () => setSettingsPage(el.dataset.settingsPage)));
-  $('settings-integrations').addEventListener('click', event => { const button = event.target.closest('[data-provider]'); if (button) openProvider(button.dataset.provider); });
+  $('settings-integrations').addEventListener('click', event => {
+    const connect = event.target.closest('[data-connect-provider]');
+    if (connect) {
+      const id = connect.dataset.connectProvider;
+      openProvider(id);
+      void connectProviders([id], $('provider-connect'));
+      return;
+    }
+    const button = event.target.closest('[data-provider]');
+    if (button) openProvider(button.dataset.provider);
+  });
   $('usage-band').addEventListener('click', event => { const button = event.target.closest('[data-usage-provider]'); if (button) openProvider(button.dataset.usageProvider); });
   $('settings-attention').addEventListener('click', () => { const s = presentation.pending(sessions)[0]; if (s) { leaveSettings(false); showFocused(s.sessionId, true); } });
   $('terminal-refresh').addEventListener('click', () => { if (terminalPickerSession) void navigateOrca(terminalPickerSession, 'list'); });
-  $('setup-detect').addEventListener('click', () => void advanceSetup('detect'));
-  $('setup-connect').addEventListener('click', () => void advanceSetup('connect'));
   $('setup-copy').addEventListener('click', () => void copy('/hooks'));
-  $('setup-reviewed').addEventListener('click', () => void advanceSetup('reviewed'));
-  $('setup-verify').addEventListener('click', () => void advanceSetup('verify'));
-  $('setup-back').addEventListener('click', () => void advanceSetup('back'));
-  $('provider-detect').addEventListener('click', () => void providerSetup('status'));
-  $('provider-connect').addEventListener('click', () => void providerSetup('connect'));
-  $('provider-reviewed').addEventListener('click', () => void providerSetup('review'));
-  $('provider-verify').addEventListener('click', () => void providerSetup('status'));
+  $('provider-connect').addEventListener('click', event => void connectProviders([providerPage], event.currentTarget));
   $('terminal-choices').addEventListener('click', event => { const button = event.target.closest('[data-terminal-index]'); const terminal = button && terminalChoices[Number(button.dataset.terminalIndex)]; if (terminal && terminalPickerSession) void navigateOrca(terminalPickerSession, 'choose', terminal.choice); });
   function toggleSound() {
     if (!audio) {
