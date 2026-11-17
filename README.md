@@ -45,7 +45,7 @@ Threadcap keeps session status in a compact strip attached to the upper edge of 
 | **Windows desktop** | x64 preview | The NSIS installer and in-place upgrade were verified on Windows. Broader Windows and display-scaling coverage is pending. |
 | **Provider setup** | Connect all | Batch registration was verified with Codex 0.169.0, Antigravity 1.5.10, and OpenCode 2.3.0 in isolated profiles. |
 | **Live provider checks** | Verified by feature | An isolated OpenCode 2.3.0 server exercised questions and lifecycle events. Authenticated interactive verification for Antigravity 1.5.10 is pending. |
-| **Distribution** | Private preview release | The 0.8.4 Windows Preview includes the unsigned installer and SHA-256 manifest. First-session onboarding with new users is the public release gate. |
+| **Distribution** | Public Windows preview | The 0.8.4 release includes the unsigned installer and SHA-256 manifest. First-time onboarding is a focus of preview testing. |
 
 [Capability matrix](docs/guides/capabilities.md) · [Native verification](docs/verification/session-opening.md) · [Roadmap](docs/development/roadmap.md)
 
@@ -90,7 +90,7 @@ Provider events update the local Rust session store. The desktop UI loads a snap
 
 The preview targets Windows 10 and 11 on x64. It uses Microsoft Edge WebView2, which the installer can fetch if needed. Install and sign in to the CLIs you plan to connect.
 
-1. Get `Threadcap_0.8.4_x64-setup.exe` and `SHA256SUMS.txt` from the Windows Preview release. Access follows the repository's private visibility. [Threadcap 0.8.4 Windows Preview](https://github.com/reshandytaftazani/Threadcap/releases/tag/v0.8.4)
+1. Get `Threadcap_0.8.4_x64-setup.exe` and `SHA256SUMS.txt` from the Windows Preview release. [Threadcap 0.8.4 Windows Preview](https://github.com/reshandytaftazani/Threadcap/releases/tag/v0.8.4)
 2. Compare the installer's SHA-256 with the manifest, then run the installer.
 
    ```powershell
@@ -144,7 +144,7 @@ Threadcap is for Windows developers who keep multiple coding sessions open and w
 
 ## Roadmap
 
-### Before the public preview
+### During the public preview
 
 - **Test first-time setup.** Watch new users go from **Connect all** to their first visible session without guidance. Use their feedback to improve provider-specific steps and recovery when setup fails.
 - **Verify Antigravity end to end.** Test a signed-in `agy` 1.5.10 session from startup through a turn, quota reporting, and exit.
