@@ -4,6 +4,8 @@ A compact Windows companion for **Codex CLI, Antigravity CLI, and OpenCode CLI**
 
 **0.8.4 · Windows x64 preview · Monitoring only**
 
+Unreleased source adds direct replies to simple OpenCode 2.3.0 questions through its TUI connector. Other forms and command approvals remain in the terminal. See [scope, setup, and verification](docs/verification/opencode-replies.md).
+
 [Releases](https://github.com/reshandytaftazani/Threadcap/releases) · [Windows build](https://github.com/reshandytaftazani/Threadcap/actions/workflows/windows.yml) · [Report a bug](https://github.com/reshandytaftazani/Threadcap/issues/new/choose)
 
 Threadcap shows session activity, surfaces requests, and keeps account quota separate from task progress. Approvals and answers stay in your agent terminal.

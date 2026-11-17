@@ -7,6 +7,36 @@ fn text(value: &Value, key: &str) -> String {
     value[key].as_str().unwrap_or("").chars().take(4096).collect()
 }
 
+fn form_context(form: &Value) -> (String, Value) {
+    let fields = form["fields"].as_array().map(Vec::as_slice).unwrap_or(&[]);
+    let visible: Vec<_> = fields.iter().filter(|field| field["hidden"] != true).take(32).collect();
+    let mut sections = Vec::new();
+    let mut choices = Vec::new();
+    for field in &visible {
+        let title = text(field, "title");
+        let description = text(field, "description");
+        let mut section = if description.is_empty() { title } else if title.is_empty() { description } else { format!("{title}\n{description}") };
+        if field["type"] == "multiselect" { section.push_str("\nMultiple choices allowed. Respond in OpenCode."); }
+        let options: Vec<_> = field["options"].as_array().map(Vec::as_slice).unwrap_or(&[]).iter().take(64).filter_map(|option| {
+            let label = text(option, "label");
+            if label.is_empty() { return None; }
+            let value = option["value"].as_str().unwrap_or(&label).chars().take(4096).collect::<String>();
+            Some(json!({"label":label,"value":value,"description":text(option,"description")}))
+        }).collect();
+        if visible.len() == 1 { choices = options; }
+        else {
+            for option in options {
+                section.push_str(&format!("\n- {}", option["label"].as_str().unwrap_or_default()));
+                if let Some(description) = option["description"].as_str().filter(|s| !s.is_empty()) { section.push_str(&format!(": {description}")); }
+            }
+        }
+        if !section.trim().is_empty() { sections.push(section); }
+    }
+    // Observe the questions, never defaults, answers, hidden fields, or authentication URLs.
+    let question = if sections.is_empty() { text(form, "title") } else { sections.join("\n\n") };
+    (question.chars().take(16000).collect(), json!(choices))
+}
+
 /// Monitoring only: never writes a decision into the provider's output stream.
 pub fn record(path: &Path, provider: &str, event: &Value, kind: Option<&str>) -> Result<Option<Value>> {
     let (identity, status, activity, request, event_kind) = match provider {
@@ -89,7 +119,8 @@ pub fn record(path: &Path, provider: &str, event: &Value, kind: Option<&str>) ->
             let key=format!("{}:{id}",if name=="form.created" {"form"} else {"permission"});
             if !requests.iter().any(|request|request["requestId"]==key) {
                 anyhow::ensure!(requests.len()<32,"Too many unresolved requests");
-                requests.push(json!({"requestId":key,"status":if name=="form.created" {"waiting_input"} else {"waiting_approval"},"question":if name=="form.created" {text(data,"title")} else {text(data,"message")},"command":text(data,"action")}));
+                let (question,options)=if name=="form.created" {form_context(data)} else {(text(data,"message"),json!([]))};
+                requests.push(json!({"requestId":key,"status":if name=="form.created" {"waiting_input"} else {"waiting_approval"},"question":question,"options":options,"command":text(data,"action")}));
             }
             report["eventKind"]=json!("request");
         } else if matches!(name,"permission.replied"|"form.replied"|"form.cancelled") {
@@ -99,8 +130,9 @@ pub fn record(path: &Path, provider: &str, event: &Value, kind: Option<&str>) ->
         report["pendingRequests"]=json!(requests);
         if let Some(request)=requests.first() {
             for key in ["requestId","status","question","command"] {report[key]=request[key].clone();}
+            report["options"]=request.get("options").cloned().unwrap_or_else(||json!([]));
             report["activity"]=json!("Respond in the provider terminal");
-        } else { report["question"]=Value::Null; report["command"]=Value::Null; }
+        } else { report["question"]=Value::Null; report["command"]=Value::Null; report["options"]=json!([]); }
     }
     if provider == "antigravity" {
         report["agentProcess"]=crate::agent_process::capture().map(serde_json::to_value).transpose()?.unwrap_or(Value::Null);
@@ -231,6 +263,33 @@ mod tests {
         assert_eq!(report["agentId"],"antigravity");assert_eq!(report["status"],"running");
         assert!(record(&path,"antigravity",&agy,Some("UnknownHook")).unwrap().is_none());
         assert_eq!(record(&path,"antigravity",&agy,Some("Stop")).unwrap().unwrap()["status"],"completed");
+    }
+    #[test]
+    fn forms_preserve_visible_questions_and_choices_without_enabling_answers() {
+        let dir=tempfile::tempdir().unwrap();let path=dir.path().join("cache.sqlite3");
+        let form=json!({"id":"created","type":"form.created","data":{"form":{"id":"frm_question","sessionID":"test","title":"Questions","fields":[
+            {"key":"token","type":"string","title":"Private field","hidden":true,"default":"private default"},
+            {"key":"q0","type":"string","title":"Which database?","description":"Choose local storage.","options":[{"value":"sqlite","label":"SQLite","description":"Local database"},{"value":"postgres","label":"PostgreSQL"}]}
+        ]}}});
+        let question=record(&path,"opencode",&form,None).unwrap().unwrap();
+        assert_eq!(question["eventKind"],"request");assert_eq!(question["status"],"waiting_input");
+        assert_eq!(question["question"],"Which database?\nChoose local storage.");
+        assert_eq!(question["options"][0]["label"],"SQLite");assert_eq!(question["options"][0]["description"],"Local database");
+        assert_eq!(question["options"].as_array().unwrap().len(),2);assert_eq!(question["capabilities"]["canAnswer"],false);
+        assert!(!question.to_string().contains("private default"));assert!(!question.to_string().contains("Private field"));
+        let progress=json!({"id":"progress","type":"session.status","data":{"sessionID":"test","status":{"type":"busy"}}});
+        assert_eq!(record(&path,"opencode",&progress,None).unwrap().unwrap()["options"],question["options"]);
+        let cancel=json!({"id":"cancel","type":"form.cancelled","data":{"sessionID":"test","id":"frm_question"}});
+        let closed=record(&path,"opencode",&cancel,None).unwrap().unwrap();assert!(closed["options"].as_array().unwrap().is_empty());assert!(closed["requestId"].is_null());
+    }
+    #[test]
+    fn multiple_form_fields_keep_question_context_and_choice_descriptions() {
+        let (question,options)=form_context(&json!({"title":"Questions","fields":[
+            {"type":"string","title":"Storage?","options":[{"label":"SQLite","value":"sqlite","description":"Local"}]},
+            {"type":"multiselect","title":"Platforms?","options":[{"label":"Windows","value":"windows"}]}
+        ]}));
+        assert!(question.contains("Storage?\n- SQLite: Local"));assert!(question.contains("Platforms?\nMultiple choices allowed."));assert!(question.contains("- Windows"));
+        assert!(options.as_array().unwrap().is_empty());
     }
     #[test]
     fn parallel_requests_survive_progress_and_only_matching_resolution_withdraws_them() {

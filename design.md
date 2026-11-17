@@ -1,5 +1,7 @@
 # Design Specification - Threadcap
 
+Approved refinement (November 17, 2026): explicit strip and hotkey opening shows the Sessions overview without selecting a session, including pending-request and completed summaries. Fresh questions/approvals retain automatic focused reveal under the existing preference and interaction protections. This supersedes historical request/result-first descriptions for manual opening below. See [verification](docs/verification/session-opening.md).
+
 Version 0.8.4 closure rule: a confirmed agent/session end or confirmed terminal closure removes that session from the main list immediately into Archive, retaining task state, output, unresolved requests, and CLI history. A completed turn, lost bridge, expired heartbeat, or unknown observation is not closure. OpenCode's persistent server is separate from the TUI clients: native process identity from a local TUI observer establishes client lifetime. Keep a session visible while any verified client owns it; remove it after the last verified client exits. Background server events cannot revive closed CLI context without fresh client ownership. Legacy local OpenCode observer rows may be archived after a complete native census confirms that no CLI client remains; unowned external rows remain unverified.
 
 Version 0.8.3 adds provider-monitoring repairs and Antigravity account quota from its official CLI status-line payload. Show remaining percentages and amounts separately, preserve provider bucket names, label unreported windows, and expose stale/unavailable readings. Keep account-to-session mapping unverified and quota separate from task progress. Preserve the user's status-line command and disabled preference. OpenCode quota remains unavailable. See [implementation and verification boundaries](docs/verification/releases/v0.8.3-provider-monitoring.md); this supersedes earlier Antigravity-quota unavailability notes below without changing the island's composition or motion.
@@ -227,7 +229,7 @@ Approval details must explain what is being allowed and its scope. Do not replac
 
 **Use recognizable product marks, not invented mascots.** The approved revision replaces the robot, floating creature, and terminal face with pixel interpretations of the actual Codex, Antigravity, and OpenCode identities. The mark's geometry and brand palette remain stable across every session state. Only the small companion carries blue/amber/green status color.
 
-Use a hand-tuned native 16-pixel grid so agent marks match the optical scale of the 14-16 DIP utility icons and 13 DIP task text. The mark and its separate 8-pixel companion occupy a fixed 28 x 24 DIP slot. Header/settings marks use a 16 DIP drawing area. Keep integer-pixel geometry rather than shrinking the previous 24-pixel artwork with CSS. Codex retains its cloud and readable terminal prompt; Antigravity retains its open arch and source color arrangement. The compact OpenCode project interpretation is 12 x 15 DIP with integer 3-pixel strokes, preserving its 4:5 proportion. This compact adaptation is smaller than the original brand guide's minimum; keep the unmodified full-size source available and do not describe the adaptation as an official supplied variant.
+Use a hand-tuned native 16-pixel grid so agent marks match the optical scale of the 14-16 DIP utility icons and 13 DIP task text. The mark and its separate 12-pixel companion occupy a fixed 32 x 24 DIP slot. Header/settings marks use a 16 DIP drawing area. Keep integer-pixel geometry rather than shrinking the previous 24-pixel artwork with CSS. Codex retains its cloud and readable terminal prompt; Antigravity retains its open arch and source color arrangement. The compact OpenCode project interpretation is 12 x 15 DIP with integer 3-pixel strokes, preserving its 4:5 proportion. This compact adaptation is smaller than the original brand guide's minimum; keep the unmodified full-size source available and do not describe the adaptation as an official supplied variant.
 
 | Agent ID | Display name | Original avatar concept | Identity accent |
 | --- | --- | --- | --- |
@@ -241,7 +243,7 @@ Verified sources: [Antigravity press assets](https://antigravity.google/press), 
 
 - Each logo must remain recognizable in grayscale by silhouette and negative space.
 - Reuse the same identity in compact mode, rows, detail, and settings.
-- Use an 8 DIP pixel glyph in a separate slot. Shape, tooltip, accessible text, and detail copy supplement color.
+- Use a redrawn 12 x 12 DIP companion grid beside the unchanged 16 DIP provider mark, separated by 3 DIP. Reserve a 32 x 24 DIP avatar slot, including room for discrete one-pixel movement. Use filled two- or three-pixel strokes for meaningful symbols; the quiet idle cue is a four-pixel block. Do not fractionally scale the old 8 DIP artwork. Shape, tooltip, accessible text, and detail copy supplement color.
 - Keep the logo itself unchanged in every frame. Use a distinct provider-specific rhythm in the companion: terminal activity for Codex, a small lift sequence for Antigravity, and rectangular step activity for OpenCode. No eyes, hands, horns, thrusters, facial expressions, or added decorations on the original mark.
 - Stop hidden and offscreen loops. Alternate integer-grid companion frames using stepped visibility. Do not rotate, stretch, tint, erase, or flash the logo to communicate state.
 - Do not blink pending requests repeatedly.
@@ -282,7 +284,8 @@ Reading this as: desktop agent identity icons for developers, in a brand-faithfu
 - Logo geometry: actual product symbols make provider recognition immediate; invented robot silhouettes do not.
 - Pixel density: native 16-pixel marks balance the surrounding controls and task text while retaining the prompt and open arch.
 - Color: source palettes identify providers; a separate semantic companion communicates session state without recoloring marks.
-- Composition: a fixed mark-plus-companion slot keeps task alignment stable across state changes.
+- Composition: a fixed 32 x 24 DIP mark-plus-companion slot keeps task alignment stable across state changes; the 12 DIP companion makes state readable beside a 16 DIP mark without enlarging the mark or island height.
+- Shared status: multi-session compact summaries retain static provider marks and one 12 DIP companion in a 14 x 16 DIP motion slot on the right, keeping status readable without multiplying animated symbols. Single-session compact and expanded rows use the same companion artwork and provider-specific cadence.
 - Motion: stepped companion frames explain activity while the product logo remains a stable anchor.
 - Scope: preserve the approved island layout, typography, and surface transitions; this revision changes identity icons and their supporting behavior.
 
@@ -332,7 +335,7 @@ Attention
 
 `[C]`, `[A]`, and `[O]` stand for pixel avatars. Bracketed descriptions stand for icons. Wireframes describe information order, not final pixel spacing.
 
-Clicking the main strip or invoking its hotkey opens the relevant session presentation. Explicit utility controls retain their own actions. Hover only widens the strip horizontally; it never opens the panel, session rows, request details, or Settings, and never activates the window. Clicking a compact request never grants permission.
+Clicking the main strip or invoking its hotkey opens the Sessions overview without selecting a session. This November 17 refinement supersedes earlier request/result-first behavior for explicit opening. Fresh-request auto-open still reveals the relevant detail under the existing preference and interaction protections. Explicit utility controls retain their own actions. Hover only widens the strip horizontally; it never opens the panel, session rows, request details, or Settings, and never activates the window. Clicking a compact request never grants permission.
 
 ### Idle and horizontal hover reveal
 
@@ -346,7 +349,7 @@ Clicking the main strip or invoking its hotkey opens the relevant session presen
 - Keyboard focus within the compact strip reveals the same information without opening the panel. Pointer exit must not collapse the reveal while a child control retains focus. Enter/Space on the main opener performs explicit opening; touch users can open the same information without hover.
 - Clicking during widening retargets the current surface directly into the focused or overview destination. Do not shrink first, restart from the original compact width, or briefly flash another view.
 
-When compact represents a pending request or completion, an explicit open reveals that session's focused presentation first. Otherwise open the session overview. A focused footer action, `Show all N sessions`, opens the full list. Opening and closing the island does not resolve, dismiss, or approve a request. Start in compact mode, as in the video; preview controls may explicitly open the overview.
+Explicit opening always shows the session overview, including when compact represents a pending request or completion. Select a row to read its detail. A fresh request may automatically reveal its focused presentation, while a focused footer action, `Show all N sessions`, opens the full list. Opening and closing the island does not resolve, dismiss, or approve a request. Start in compact mode, as in the video; preview controls may explicitly open the overview.
 
 ## 9. Expanded composition
 
@@ -443,9 +446,17 @@ Show `Allowed`, `Denied`, or `Sent` only after adapter acknowledgment. Acknowled
 
 ### Questions
 
+Approved OpenCode direct replies (November 17, 2026): keep the existing question surface, quiet option descriptions, and stable provider mark. Reading this as a compact request utility for CLI users in Threadcap's black/pixel visual language, with ENERGY 1 / RHYTHM 1 / MOTION 2. Native radio buttons and checkboxes communicate selection without introducing decorative icons. A white `Send` button is the single primary action because submitting is a deliberate, consequential step; `Open terminal` remains secondary.
+
+For a verified OpenCode 2.3.0 question form with one supported visible field, show single-choice radios, multi-choice checkboxes, or a labeled short-text editor. Nothing is preselected and selecting never sends. Preserve custom-answer support when supplied by OpenCode. Keep choices and drafts per session/request through collapse and Settings. Only explicit `Send` or Ctrl+Enter in the editor submits. Disable duplicate submissions and show `Sending...`; show `Sent` only after OpenCode's form reply API acknowledges. This acknowledgment does not establish execution or task success.
+
+Revalidate exact session/form ownership and pending state before delivery. Never use terminal keystrokes or enable command approval through this connector. Complex, conditional, hidden, external/authentication, unsupported-version, or unavailable forms retain the observed question and terminal route. After an ambiguous transport failure, retain the draft, explain the missing confirmation, and direct the user to the terminal rather than offering a potentially duplicate automatic retry. Registration and successful builds alone do not verify real answer delivery. See [direct-reply verification](docs/verification/opencode-replies.md).
+
 Show the complete question in detail. Use balanced horizontal buttons for short single-choice answers, wrapping into rows for long labels or narrow widths. Preserve full option text and use neutral surfaces; do not imply that a recommended option has already been selected. Use checkboxes with `Send` for multiple choices, and a labeled two-to-four-line reply field for free text. Preserve drafts per session and request when switching or collapsing.
 
 For monitoring-only adapters, show the request with a terminal jump icon and visible short action `Open terminal`. Explain in detail that replies must be entered there. Never show functional-looking response controls that only change local display state.
+
+OpenCode v2 forms must retain visible field questions, choice labels, and supplied choice descriptions. Display observed choices as a readable list when reply delivery is unsupported, never as disabled or simulated answer buttons. Multi-field forms preserve each question and its choices in order. Do not collect hidden fields, defaults, answers, or authentication URLs for this presentation.
 
 ## 12. Focus and keyboard
 
@@ -581,6 +592,8 @@ Lumi is an approved reference to inspect for setup motion. Its local installatio
 ### Approved automatic attention and completion behavior, planned
 
 Add `Auto-open requests` to Behavior, enabled by default on initial setup and persisted thereafter. A fresh, connected question or approval request automatically opens its focused island surface without taking OS or keyboard focus. Never route passive reveal through a native action that activates the window. Opening never grants permission, sends a reply, or adds unsupported interaction capabilities. When disabled, retain manual opening and visible attention cues.
+
+Fresh attention can also reveal from an already-open, unselected Sessions overview when the pointer is outside the island and no session control or text field holds focus. Keep a selected detail, Settings, terminal selection, typing, and pointer interaction in place. Remaining in overview must not silently suppress an otherwise safe request reveal.
 
 During typing, another request interaction, or Settings, preserve the current view, input, caret, and scroll. Show a stable attention indicator and explicit `View request` action instead of replacing content. Queue new requests oldest-first and retain the current request's controls in place. Deferred requests remain explicitly navigable; leaving a protected view must not cause a surprise automatic page switch.
 

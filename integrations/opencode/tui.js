@@ -1,11 +1,14 @@
-// Threadcap OpenCode TUI lifetime observer. No prompts, decisions, or navigation are sent.
+// Threadcap OpenCode TUI lifetime observer. Question replies use the separate scoped connector.
 import { spawn } from 'node:child_process';
+import { connectQuestions } from './questions.js';
 const helper = __THREADCAP_HELPER__;
 const port = __THREADCAP_PORT__;
 export default {
   id: 'threadcap.monitor.tui',
   setup(context) {
     const sessions = new Set();
+    let closeQuestions = null;
+    void connectQuestions(context,id=>sessions.has(id)).then(close=>{if(stopped)close();else closeQuestions=close;}).catch(()=>{});
     let stopped = false, child = null, dirty = true, delivered = '', attempted = 0;
     const observe = () => {
       if (stopped) return;
@@ -25,6 +28,6 @@ export default {
     };
     observe();
     const timer = setInterval(observe, 500);
-    return () => { stopped = true; clearInterval(timer); child?.kill(); };
+    return () => { stopped = true; clearInterval(timer); closeQuestions?.(); child?.kill(); };
   }
 };

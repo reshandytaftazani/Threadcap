@@ -4,6 +4,12 @@ This file summarizes implemented releases. Detailed verification records remain 
 
 ## Unreleased
 
+- Open Sessions first when clicking the strip or invoking its hotkey, including pending/completed summaries. Fresh-request auto-open retains its existing preference and interaction protections.
+
+- Add explicit Send for supported OpenCode 2.3.0 questions through a TUI-owned native connector. Preserve single/multiple choices, short-text drafts, terminal fallback, request identity, and honest acknowledgment/error states. Command approvals remain in OpenCode.
+
+- Preserve OpenCode form questions and choice descriptions in monitoring-only detail. Allow fresh requests to reveal from an unattended Sessions overview while preserving selected details, Settings, and user interaction. Add real-server form checks without model calls.
+- Redraw agent state companions on a 12 DIP pixel grid beside unchanged 16 DIP product marks. Use one shared companion for grouped compact summaries, preserve animation identity across activity updates, and add a current-build WebView2 check.
 - Organize guides, architecture, integrations, verification records, and historical plans into dedicated documentation folders. Separate active CLI observers, test suites, build tools, preview pages, and legacy prototypes; update imports and build references together.
 - Add standard `dev`/`build` tasks and full provider names in task commands, with documented desktop compatibility aliases.
 - Put the shell-test receiver back into blocking mode after nonblocking accept, retaining its bounded read timeout.

@@ -2,6 +2,8 @@
 
 This page describes the current release. Earlier implementation reports record historical evidence; [CHANGELOG.md](../../CHANGELOG.md) explains changes between releases.
 
+Unreleased direct replies: simple OpenCode 2.3.0 question forms with one supported string or multiselect field can be answered in the island through a connected TUI plugin. Select or type, then press Send. Unsupported forms and command approvals retain the terminal route. Generic HTTP actions remain unsupported. Updated plugin files require Connect and restarting OpenCode CLI. See [scope and verification](../verification/opencode-replies.md).
+
 | Area | Implemented | Verification and limits |
 | --- | --- | --- |
 | Windows host | Tauri/Rust, embedded UI, loopback producer bridge, tray | Native tests and installed upgrade checked on the available Windows machine; full OS/DPI/multi-monitor coverage remains open. |
@@ -24,3 +26,5 @@ This page describes the current release. Earlier implementation reports record h
 - [Codex native navigation](../integrations/orca-navigation.md)
 
 Successful builds, synthetic events, plugin registration, and real-provider operation are distinct forms of evidence. An installer build alone does not establish native click-through, focus, terminal routing, or integration correctness.
+
+Unreleased refinement: OpenCode 2.3.0 interactive forms retain visible field questions and choice descriptions in monitoring-only detail. Fresh attention can reveal from an unattended, unselected Sessions overview as well as compact mode. Settings and active session interaction remain protected. See [the real-server form and native attention checks](../verification/opencode-questions.md). This requires the updated application and helper; it is not a claim about an older installed 0.8.4 build.

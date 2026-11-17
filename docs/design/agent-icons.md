@@ -19,7 +19,7 @@ The community Codex SVG's MIT notice is retained in `src/assets/agents/sources/c
 - Base each image on its product symbol. Do not add eyes, hands, horns, faces, or invented mascot anatomy.
 - Preserve the brand palette through working, approval, question, sending, completed, failed, and offline states.
 - Preserve the cloud prompt, the Antigravity arch's open center, and OpenCode's 4:5 proportions.
-- Show the native 16-pixel logo beside an independent 8-pixel companion in a 28 x 24 slot. Header/settings versions show only the 16-pixel mark. The compact OpenCode interpretation is smaller than the brand guide's official display minimum; the original full-size asset remains unchanged in the sources directory.
+- Show the native 16-pixel logo beside an independent 12-pixel companion in a 32 x 24 slot, with a 3 DIP gap. Redraw filled glyphs on the larger integer grid instead of fractionally scaling the earlier artwork. Header/settings versions show only the 16-pixel mark. Compact groups use static provider marks and one shared companion. The compact OpenCode interpretation is smaller than the brand guide's official display minimum; the original full-size asset remains unchanged in the sources directory.
 - Animate companion frames only. Provider-specific timing and activity shapes distinguish terminal progression, lift progression, and rectangular steps.
 - Product marks remain static. Idle state companions have occasional motion with long rest periods as of 0.7.0. Completion/failure sequences settle once. Hidden/offscreen animations pause, and the motion control stops nonessential loops.
 - Reduced motion keeps the identical brand mark and one final companion symbol.

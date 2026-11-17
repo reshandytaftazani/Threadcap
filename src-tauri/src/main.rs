@@ -8,6 +8,7 @@ mod frame;
 mod navigation;
 mod provider_setup;
 mod opencode_lifetime;
+mod opencode_questions;
 
 use island_core::Store;
 use serde_json::{json, Value};
@@ -34,6 +35,14 @@ struct DesktopState {
     setup_lock: tokio::sync::Mutex<()>,
     codex_cache: Option<PathBuf>,
     retention_pause: Arc<std::sync::atomic::AtomicBool>,
+}
+
+#[tauri::command]
+async fn opencode_question(state: State<'_, DesktopState>, session_id: String, request_id: String, answer: Option<Value>) -> Result<Value,String> {
+    let snapshot = state.store.snapshot();
+    let session = snapshot["sessions"].as_array().and_then(|rows| rows.iter().find(|s| s["sessionId"] == session_id)).ok_or("Session no longer exists")?;
+    if session["requestId"] != request_id || session["status"] != "waiting_input" || session["connectionStatus"] != "connected" || session["archived"] == true || session["terminalStatus"] == "closed" { return Err("Question is no longer available. Open the terminal.".into()); }
+    tauri::async_runtime::spawn_blocking(move || opencode_questions::execute(&session_id,&request_id,answer)).await.map_err(|e|e.to_string())?
 }
 
 #[tauri::command]
@@ -202,7 +211,7 @@ fn main() {
         }).build())
         .manage(usage::UsageState::default())
         .manage(navigation::NavigationState::default())
-        .invoke_handler(tauri::generate_handler![connect_sessions,disconnect_sessions,update_region,desktop_ready,watch_outside_clicks,codex_integration,provider_integration,usage::read_usage,orca_terminal,archive_session,retention_settings,archive_delay,delete_archived])
+        .invoke_handler(tauri::generate_handler![connect_sessions,disconnect_sessions,update_region,desktop_ready,watch_outside_clicks,codex_integration,provider_integration,usage::read_usage,orca_terminal,opencode_question,archive_session,retention_settings,archive_delay,delete_archived])
         .setup(|app| {
             // Bind before opening the shared database; an old Python bridge must not run alongside this writer.
             let port = std::env::var("VIBE_ISLAND_PORT").ok().map(|value|value.parse::<u16>()).transpose()?.unwrap_or(37891);

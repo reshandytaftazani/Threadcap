@@ -1,0 +1,42 @@
+// Owned native fixtures verify explicit opening separately from fresh-request reveal.
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const {startNative}=require('./native-harness.cjs');
+(async()=>{
+  const root=path.resolve(__dirname,'../..');
+  const executable=process.env.VIBE_ISLAND_TEST_EXE || path.join(root,'src-tauri/target/release/vibe-island.exe');
+  if(fs.statSync(executable).mtimeMs<fs.statSync(path.join(root,'src/app.js')).mtimeMs)throw Error('Rebuild the native host before testing session opening.');
+  const h=await startNative('session-opening'),checks=[];
+  const check=(name,passed)=>{checks.push({name,passed:!!passed});if(!passed)throw Error(name);};
+  const overview=()=>h.until('IslandPreview.snapshot().expanded && !IslandPreview.snapshot().focused && IslandPreview.snapshot().selected===null');
+  const clickStrip=()=>h.evaluate("document.getElementById('compact-view').click()");
+  const collapse=()=>h.evaluate('IslandPreview.setExpanded(false)');
+  try {
+    await clickStrip();check('Empty strip opens Sessions',await overview());await collapse();
+    await h.inject({agentId:'codex',sessionId:'codex:opening',sourceRevision:1,eventId:'opening-done',status:'completed',connectionStatus:'connected',eventKind:'completion',result:'Preserved output',taskTitle:'Completed fixture'});
+    await h.until("IslandPreview.snapshot().sessions.some(s=>s.status==='completed')");
+    await clickStrip();check('Completed Codex summary opens Sessions without choosing Codex',await overview());await collapse();
+    await h.inject({agentId:'opencode',sessionId:'opencode:opening',sourceRevision:1,eventId:'opening-question',status:'waiting_input',connectionStatus:'connected',requestId:'form:opening',question:'Choose a destination',options:['One','Two'],eventKind:'activity',taskTitle:'Question fixture'});
+    check('Fresh question still automatically reveals its own detail',await h.until("IslandPreview.snapshot().focused && IslandPreview.snapshot().selected==='opencode:opening'"));
+    await collapse();await clickStrip();
+    check('Pending question summary opens Sessions on explicit click',await overview());
+    await h.evaluate("document.querySelector('[data-session=\"opencode:opening\"] .session-toggle').click()");
+    check('Choosing a row opens the chosen session detail',await h.until("IslandPreview.snapshot().selected==='opencode:opening' && document.querySelector('[data-session=\"opencode:opening\"] .session-toggle').getAttribute('aria-expanded')==='true'"));
+    await collapse();
+    await h.evaluate("document.getElementById('compact-view').focus()");
+    await h.send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',windowsVirtualKeyCode:32,modifiers:3});
+    await h.send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space',windowsVirtualKeyCode:32,modifiers:3});
+    check('Keyboard shortcut opens Sessions without selecting a request',await overview());
+    await collapse();
+    await h.evaluate("dispatchEvent(new CustomEvent('island-desktop-action',{detail:'toggle'}))");
+    check('Native shortcut action opens Sessions',await overview());
+    await collapse();
+    await h.inject({agentId:'codex',sessionId:'codex:opening',sourceRevision:2,eventId:'opening-approval',status:'waiting_approval',connectionStatus:'connected',requestId:'approval:opening',command:'Fixture command',eventKind:'activity'});
+    check('Fresh approval still automatically reveals its own detail',await h.until("IslandPreview.snapshot().focused && IslandPreview.snapshot().selected==='codex:opening'"));
+    await collapse();await clickStrip();check('Pending approval summary opens Sessions on explicit click',await overview());
+    if(!await h.until("!document.getElementById('island-surface').classList.contains('is-opening') && document.getAnimations().every(a=>a.playState!=='running' || a.effect?.getTiming().iterations===Infinity)"))throw Error('Overview geometry did not settle before capture');
+    const screenshot=await h.send('Page.captureScreenshot',{format:'png'});
+    fs.writeFileSync(path.join(root,'artifacts/session-opening-native.png'),Buffer.from(screenshot.data,'base64'));
+    const result={executableSha256:crypto.createHash('sha256').update(fs.readFileSync(executable)).digest('hex'),checks,scope:'Synthetic sessions in an isolated current native host; no user data, provider task, or model call.'};
+    fs.writeFileSync(path.join(root,'artifacts/session-opening-native.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));
+  }finally{await h.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

@@ -91,6 +91,7 @@
     }
     close() { this.closed = true; clearTimeout(this.retry); }
   }
+  window.IslandOpenCode = Object.freeze({ question: (sessionId, requestId, answer = null) => invoke('opencode_question', { sessionId, requestId, answer }) });
   window.IslandDesktop = Object.freeze({ createSource: () => new NativeSessionSource(), scheduleGeometry: schedule, codexIntegration: (action) => invoke('codex_integration', { action }), providerIntegration: (provider, action) => invoke('provider_integration', { provider, action }), readUsage: (provider = 'codex') => invoke('read_usage', { provider }), orcaTerminal: (sessionId, action, choice = null) => invoke('orca_terminal', { sessionId, action, choice }), archiveSession: (sessionId, archived) => invoke('archive_session', { sessionId, archived }), retentionSettings: (enabled = null) => invoke('retention_settings', { enabled }), archiveDelay: (minutes = null) => invoke('archive_delay', { minutes }), deleteArchived: targets => invoke('delete_archived', { targets }) });
   window.__TAURI__.event.listen('desktop-action', ({ payload }) => {
     window.dispatchEvent(new CustomEvent('island-desktop-action', { detail: payload }));

@@ -32,6 +32,8 @@ pub fn opencode(path:&Path,helper:&Path,port:u16)->Result<()> {
     anyhow::ensure!(!std::fs::read_to_string(path).ok().is_some_and(|old|!old.starts_with("// Threadcap OpenCode v2 server plugin.")),"An unrelated plugin occupies the Threadcap path");
     let directory=path.parent().context("Plugin directory unavailable")?;
     let tui_path=directory.join("tui.js");
+    let questions_path=directory.join("questions.js");
+    anyhow::ensure!(!std::fs::read_to_string(&questions_path).ok().is_some_and(|old|!old.starts_with("// Threadcap's TUI-owned connector")),"An unrelated file occupies the Threadcap question connector path");
     anyhow::ensure!(!std::fs::read_to_string(&tui_path).ok().is_some_and(|old|!old.starts_with("// Threadcap OpenCode TUI lifetime observer.")),"An unrelated TUI plugin occupies the Threadcap path");
     let cli_path=directory.parent().and_then(Path::parent).context("OpenCode configuration directory unavailable")?.join("cli.json");
     let mut cli:serde_json::Value=if cli_path.is_file(){
@@ -43,6 +45,7 @@ pub fn opencode(path:&Path,helper:&Path,port:u16)->Result<()> {
     let target="./plugins/threadcap-monitor";
     if !plugins.iter().any(|entry|entry.as_str()==Some(target) || entry["package"].as_str()==Some(target)) {plugins.push(serde_json::json!(target));}
     let tui=include_str!("../../../integrations/opencode/tui.js").replace("__THREADCAP_HELPER__",&serde_json::to_string(helper)?).replace("__THREADCAP_PORT__",&port.to_string());
+    replace(&questions_path,include_bytes!("../../../integrations/opencode/questions.js"))?;
     replace(path,content.as_bytes())?;replace(&tui_path,tui.as_bytes())?;replace(&cli_path,&serde_json::to_vec_pretty(&cli)?)
 }
 

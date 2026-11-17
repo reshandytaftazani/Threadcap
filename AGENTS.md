@@ -37,7 +37,7 @@ Version 0.8.1 overrides Antigravity retention: a confirmed CLI process exit or a
 - Use pixel interpretations of the actual Codex product cloud/prompt, Antigravity arch, and OpenCode rectangular mark. Preserve brand palettes and recognizable silhouettes across every state. Do not invent mascots or use the generic OpenAI Blossom as the Codex product mark.
 - Animate separate state companions with provider-specific rhythms for working, input, approval, sending, completion, failure, and offline states. Version 0.7.0 adds occasional idle companion motion with long rest periods; static utility/header marks remain static. Keep product marks stable. Do not deform, recolor, dim, or flash product marks. Stop hidden loops and preserve one-shot animation identity during unrelated updates.
 - Follow the decoded demo's discrete pixel motion, adapted to brand-faithful marks rather than faces, horns, hands, thrusters, or shaded metal. Source provenance and the distinction between official assets and project adaptations are recorded in `docs/design/agent-icons.md`.
-- Preserve compact, focused-session, and all-session presentations. Open the relevant request/result first and provide `Show all N sessions`; never grant permission by opening the compact strip.
+- Preserve compact, focused-session, and all-session presentations. Explicit strip/hotkey opening shows the Sessions overview with no selected session. Fresh request auto-open may still reveal the relevant detail, subject to interaction protection and the user's preference. Keep `Show all N sessions` in focused detail; opening never grants permission or sends a reply.
 - Use icons for familiar utilities, with tooltips, accessible names, visible focus, and consistent targets.
 - Keep task context, questions, error explanations, and consequential decisions understandable without hover.
 - Approval actions retain short `Allow` and `Deny` labels with clear scope. Do not replace them with unlabeled symbols.
@@ -64,6 +64,8 @@ Version 0.8.1 overrides Antigravity retention: a confirmed CLI process exit or a
 - Native outside-click dismissal must work without a foreground-focus change. Keep its mouse hook active only while the panel or Settings is open, forward input, and compare native root windows so WebView2 children remain inside. Disarm on compact/hide and preserve close/open ordering. Do not replace this behavior with blur-only handling or permanent cursor polling.
 
 ## Integration correctness
+
+- Unreleased OpenCode direct replies use a separate TUI-owned native connector for simple 2.3.0 question forms. The server plugin remains monitoring-only. Keep generic HTTP actions disabled; producer capabilities cannot grant replies or command approval. See [scope and verification](docs/verification/opencode-replies.md).
 
 - Version 0.8.3 generates encoded Windows launchers after real Codex/Antigravity runners exposed quoted-path failures before observer startup. Do not restore the direct quoted-executable optimization based only on a raw CMD fixture. Keep the reviewed Codex command stable across binary updates. OpenCode Connect supports verified 2.2.7 and 2.3.0 and observes opened/durable lifecycle events; viewing or compatibility-idle events cannot erase authoritative task state. Antigravity quota uses the official status-line payload, preserving existing output and disabled preferences; its separate cache hashes account identity and never infers window duration or session progress. Account-to-session mapping and OpenCode quota remain unavailable. See [provider repair evidence and limits](docs/verification/releases/v0.8.3-provider-monitoring.md).
 
@@ -142,6 +144,7 @@ For the isolated UI preview, run `npm.cmd run preview` and open `http://127.0.0.
 The final command invokes a real Antigravity task; use it only when a live integration run is appropriate and authorized. Do not launch agents merely to validate documentation or appearance.
 
 - Inspect existing scripts before running them. Prefer targeted, reversible changes and preserve unrelated work.
+- Work without subagents, as requested by the maintainer. Validate changes against the current source and a freshly built executable when native checks are needed; an older installed build is not evidence for the current implementation.
 - For UI changes, review against `design.md` rather than the legacy screenshot. Capture representative screenshots and short motion recordings when a suitable runtime is available.
 - Check keyboard access, accessible names, contrast, reduced motion, focus preservation, and larger text.
 - Validate compact and expanded layouts at 1366 x 768 and 1920 x 1080, with 100%, 125%, 150%, and 200% scaling. Include mixed-DPI monitors and different taskbar positions when testing the desktop shell.

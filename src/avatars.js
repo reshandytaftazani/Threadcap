@@ -39,13 +39,13 @@
   const unknownMark = '<path fill="#A8A8B3" fill-rule="evenodd" d="M2 2h12v12H2zM4 4v8h8V4z"/><path fill="#A8A8B3" d="M6 6h4v4H6z"/>';
   const marks = { codex: codexMark, antigravity: antigravityMark, opencode: opencodeMark, unknown: unknownMark };
   const symbols = {
-    idle: ['.......','.......','.......','..xx...','..xx...','.......','.......','.......'],
-    waiting_input: ['.xxxx..','xx..xx.','....xx.','...xx..','..xx...','.......','..xx...','.......'],
-    waiting_approval: ['..xx...','..xx...','..xx...','..xx...','..xx...','.......','..xx...','.......'],
-    completed: ['.......','.....xx','....xx.','xx.xx..','.xxx...','..x....','.......','.......'],
-    failed: ['xx...xx','.xx.xx.','..xxx..','...x...','..xxx..','.xx.xx.','xx...xx','.......'],
-    disconnected: ['xx...xx','.xx.xx.','.......','.......','.xx.xx.','xx...xx','.......','.......']
-    ,checking: ['.xxxx..','xx..xx.','xx..xx.','xx..xx.','.xxxx..','.......','..xx...','.......']
+    idle: ['............','............','............','............','....xxxx....','....xxxx....','....xxxx....','....xxxx....','............','............','............','............'],
+    waiting_input: ['............','...xxxxxx...','..xxxxxxxx..','..xx....xx..','.......xxx..','......xxx...','.....xxx....','.....xx.....','............','.....xx.....','.....xx.....','............'],
+    waiting_approval: ['............','....xxxx....','....xxxx....','....xxxx....','....xxxx....','....xxxx....','.....xx.....','.....xx.....','............','....xxxx....','....xxxx....','............'],
+    completed: ['............','.........xx.','........xxx.','.......xxx..','......xxx...','.xx..xxx....','.xxxxxx.....','..xxxx......','...xx.......','............','............','............'],
+    failed: ['............','.xxx....xxx.','..xxx..xxx..','...xxxxxx...','....xxxx....','....xxxx....','...xxxxxx...','..xxx..xxx..','.xxx....xxx.','............','............','............'],
+    disconnected: ['............','.xxxx..xxxx.','.xx......xx.','............','............','............','............','.xx......xx.','.xxxx..xxxx.','............','............','............'],
+    checking: ['............','...xxxxxx...','..xxxxxxxx..','..xx....xx..','..xx....xx..','..xx....xx..','..xxxxxxxx..','...xxxxxx...','............','.....xx.....','.....xx.....','............']
   };
   function symbolPath(grid) {
     let path = '';
@@ -54,14 +54,14 @@
   }
   function companion(agent, state, frame) {
     if (state === 'running' || state === 'sending') {
-      if (agent === 'antigravity') return `<path fill="currentColor" d="M3 ${4 - frame}h2v3H3zM0 ${6 - frame}h2v2H0zM6 ${6 - frame}h2v2H6z"/>`;
-      if (agent === 'opencode') return `<path fill="currentColor" d="M0 5h2v2H0zM3 ${5 - frame}h2v${2 + frame}H3zM6 ${4 - frame}h2v${3 + frame}H6z"/>`;
-      return `<path fill="currentColor" d="M0 1h2v2H0zM2 3h2v2H2zM0 5h2v2H0zM${4 + frame} 6h2v2h-2z"/>`;
+      if (agent === 'antigravity') return `<path fill="currentColor" d="M4 ${4 - frame}h3v5H4zM0 ${7 - frame}h3v3H0zM8 ${7 - frame}h3v3H8z"/>`;
+      if (agent === 'opencode') return `<path fill="currentColor" d="M0 7h3v3H0zM4 ${6 - frame}h3v${4 + frame}H4zM8 ${4 - frame}h3v${6 + frame}H8z"/>`;
+      return `<path fill="currentColor" d="M0 1h3v3H0zM3 4h3v3H3zM0 7h3v3H0zM${7 + (frame === 1 ? 1 : 0)} 8h3v3h-3z"/>`;
     }
     const dx = agent === 'codex' && frame === 1 ? 1 : 0;
     const dy = agent === 'antigravity' && frame === 1 ? -1 : agent === 'opencode' && frame === 1 ? 1 : 0;
     const resolved = ['completed', 'failed', 'disconnected'].includes(state);
-    const arrivalX = resolved && agent === 'codex' ? [-2,-1,0][frame] : resolved && agent === 'opencode' ? [1,-1,0][frame] : dx;
+    const arrivalX = resolved && agent === 'codex' ? [-1,0,0][frame] : resolved && agent === 'opencode' ? [1,-1,0][frame] : dx;
     const arrivalY = resolved && agent === 'antigravity' ? [2,1,0][frame] : resolved ? 0 : dy;
     // Only the companion moves. The product mark never deforms or changes palette.
     return `<g transform="translate(${arrivalX} ${arrivalY})">${symbolPath(symbols[state] || symbols.idle)}</g>`;
@@ -69,8 +69,15 @@
   function render(agent = 'unknown', state = 'idle', isStatic = false, settled = false) {
     agent = Object.hasOwn(marks, agent) ? agent : 'unknown';
     state = Object.hasOwn(states, state) ? state : 'idle';
-    const frames = isStatic ? '' : [0,1,2].map((frame) => `<g class="sprite-frame sprite-frame-${frame}" transform="translate(20 4)">${companion(agent, state, frame)}</g>`).join('');
-    return `<span class="agent-avatar${isStatic ? ' is-static' : ''}${settled ? ' is-settled' : ''}" data-agent="${agent}" data-state="${state}" role="img" aria-label="${names[agent]}: ${states[state]}" title="${names[agent]} · ${states[state]}"><svg viewBox="0 0 ${isStatic ? '16 16' : '28 16'}" width="${isStatic ? 16 : 28}" height="16" shape-rendering="crispEdges" aria-hidden="true"><g class="brand-mark">${marks[agent]}</g>${frames}</svg></span>`;
+    const frames = isStatic ? '' : renderFrames(agent, state, 19);
+    return `<span class="agent-avatar${isStatic ? ' is-static' : ''}${settled ? ' is-settled' : ''}" data-agent="${agent}" data-state="${state}" role="img" aria-label="${names[agent]}: ${states[state]}" title="${names[agent]} · ${states[state]}"><svg viewBox="0 0 ${isStatic ? '16 16' : '32 16'}" width="${isStatic ? 16 : 32}" height="16" shape-rendering="crispEdges" aria-hidden="true"><g class="brand-mark">${marks[agent]}</g>${frames}</svg></span>`;
   }
-  window.IslandAvatars = Object.freeze({ render, names, states });
+  function renderFrames(agent, state, x) {
+    return [0,1,2].map(frame => `<g class="sprite-frame sprite-frame-${frame}" transform="translate(${x} 2)">${companion(agent, state, frame)}</g>`).join('');
+  }
+  function renderState(state = 'idle', settled = false) {
+    state = Object.hasOwn(states, state) ? state : 'idle';
+    return `<span class="agent-avatar is-indicator${settled ? ' is-settled' : ''}" data-agent="unknown" data-state="${state}" role="img" aria-label="${states[state]}"><svg viewBox="0 0 14 16" width="14" height="16" shape-rendering="crispEdges" aria-hidden="true">${renderFrames('unknown', state, 1)}</svg></span>`;
+  }
+  window.IslandAvatars = Object.freeze({ render, renderState, names, states });
 })();

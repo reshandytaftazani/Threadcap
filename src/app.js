@@ -55,6 +55,63 @@
   const preferences = {};
   try { Object.assign(preferences, JSON.parse(localStorage.getItem('island.preferences') || '{}')); } catch {}
   const drafts = new Map(), delivery = new Map();
+  const openCodeForms = new Map(), formDrafts = new Map(), formCustom = new Map(), formErrors = new Map(), formAttempts = new Map();
+  async function loadOpenCodeForm(s) {
+    if (preview || !window.IslandOpenCode || s.agentId !== 'opencode' || s.status !== 'waiting_input' || !s.requestId?.startsWith('form:') || disconnected(s)) return;
+    const key = requestKey(s);
+    if (openCodeForms.has(key)) return;
+    openCodeForms.set(key, null);
+    try {
+      const result = await window.IslandOpenCode.question(s.sessionId, s.requestId);
+      const current = sessions.find(item => item.sessionId === s.sessionId);
+      if (!current || requestKey(current) !== key || disconnected(current)) return;
+      const field = result.field;
+      if (!field || !['string','multiselect'].includes(field.type) || typeof field.key !== 'string') return;
+      openCodeForms.set(key, field);
+      updateRow(rowMap.get(current.sessionId), current); fitSurface();
+    } catch {
+      // The TUI can register its connector just after the server's form event arrives.
+      const attempt = formAttempts.get(key) || 0;
+      if (attempt < 3) {
+        formAttempts.set(key,attempt+1);
+        setTimeout(() => {
+          const current = sessions.find(item => requestKey(item) === key);
+          if (!current || disconnected(current) || !isPending(current)) return;
+          openCodeForms.delete(key); void loadOpenCodeForm(current);
+        },[400,1200,3200][attempt]);
+      }
+    }
+  }
+  function openCodeFormMarkup(s, field) {
+    const draft = formDrafts.get(requestKey(s));
+    const options = field.options || [], multiple = field.type === 'multiselect';
+    const choices = options.map((option, i) => `<label class="answer-choice"><input type="${multiple ? 'checkbox' : 'radio'}" name="answer" value="${i}" ${(multiple ? Array.isArray(draft) && draft.includes(option.value) : draft === option.value) ? 'checked' : ''}><span>${esc(option.label)}${option.description ? `<small>${esc(option.description)}</small>` : ''}</span></label>`).join('');
+    const custom = formCustom.get(requestKey(s)) || '';
+    const editor = !options.length || field.custom ? `<label class="answer-custom">${options.length ? 'Or write a reply' : 'Your reply'}<textarea class="reply-input opencode-text" rows="2" maxlength="${Math.min(field.maxLength ?? 4096,4096)}">${esc(options.length ? custom : typeof draft === 'string' ? draft : '')}</textarea></label>` : '';
+    return `<form class="opencode-form"><fieldset><legend>${esc(multiple ? 'Choose one or more' : options.length ? 'Choose one' : 'Your reply')}</legend>${choices}${editor}</fieldset><div class="answer-actions"><button type="submit" class="text-button answer-send">Send</button>${terminalAction(s) ? button('Open terminal','jump') : ''}</div><p class="delivery-note" role="status" hidden></p></form>`;
+  }
+  async function sendOpenCodeAnswer(s) {
+    const key = requestKey(s), field = openCodeForms.get(key);
+    let value = formDrafts.get(key);
+    const custom = formCustom.get(key);
+    if (custom?.trim()) value = field?.type === 'multiselect' ? [...new Set([...(Array.isArray(value) ? value : []),custom])] : custom;
+    if (!field || disconnected(s) || !isPending(s) || ['sending','acknowledged','uncertain'].includes(delivery.get(key))) return;
+    if (field.type === 'multiselect' ? !Array.isArray(value) || value.length < (field.minItems ?? 1) || value.length > (field.maxItems ?? 64) : typeof value !== 'string' || !value.trim() || value.length < (field.minLength ?? 1)) {
+      formErrors.set(key, 'Choose an answer or enter a valid reply.'); updateDeliveryUI(s); return;
+    }
+    delivery.set(key,'sending'); formErrors.delete(key); updateRow(rowMap.get(s.sessionId),s);
+    try {
+      const result = await window.IslandOpenCode.question(s.sessionId,s.requestId,value);
+      if (result.acknowledged !== true || result.requestId !== s.requestId) throw Error('OpenCode did not confirm delivery. Check the terminal.');
+      delivery.set(key,'acknowledged'); formDrafts.delete(key); formCustom.delete(key);
+      notify('Sent to OpenCode');
+    } catch (error) {
+      delivery.set(key,'uncertain'); formErrors.set(key,String(error));
+    }
+    const current = sessions.find(item => item.sessionId === s.sessionId);
+    if (current && requestKey(current) === key) updateRow(rowMap.get(s.sessionId), current);
+    fitSurface();
+  }
   const sessionModel = new window.IslandSessionModel();
   const presentation = new window.IslandPresentation.PresentationPolicy();
   const silentPoses = new Set();
@@ -133,7 +190,7 @@
         const rows = sessions.filter(item => item.agentId === id);
         const priority = ['waiting_approval','waiting_input','failed','running','completed','idle','checking','disconnected'];
         const pose = priority.find(value => rows.some(row => presentation.compactState(row,offline) === value)) || 'idle';
-        return avatar.render(id, pose, false, !preview && rows.every(row => silentPoses.has(`${row.sessionId}:${row.status}`)));
+        return avatar.render(id, pose, true);
       }).join('')
       : s ? avatar.render(s.agentId, state, false, !preview && silentPoses.has(`${s.sessionId}:${s.status}`)) : '<span class="application-mark" aria-hidden="true"></span>';
     // Avoid restarting sprite loops for unrelated updates.
@@ -145,11 +202,14 @@
     $('compact-usage').textContent = provider ? `${avatar.names[provider]} account · ${window.IslandUsage.summary(provider)}` : 'Connect an agent';
     $('compact-status').style.setProperty('--state-color', COLORS[state]);
     const summary = multiple ? failedCount ? `${failedCount} failed` : workingCount ? `${workingCount} working` : '' : pending ? String(pending) : state === 'idle' || state === 'disconnected' ? '' : s?.elapsed || '';
-    const statusMarkup = `<span class="state-glyph">${glyph(state)}</span>${summary ? `<span>${esc(summary)}</span>` : ''}`;
+    const statusMarkup = avatar.renderState(state, !preview && sessions.every(row => silentPoses.has(`${row.sessionId}:${row.status}`)));
+    if (!$('compact-status').firstElementChild) $('compact-status').innerHTML = '<span class="compact-state"></span><span class="compact-status-text"></span>';
     if ($('compact-status').dataset.signature !== statusMarkup) {
-      $('compact-status').innerHTML = statusMarkup;
+      setAvatars($('compact-status').firstElementChild, statusMarkup);
       $('compact-status').dataset.signature = statusMarkup;
     }
+    $('compact-status').lastElementChild.textContent = summary;
+    $('compact-status').lastElementChild.hidden = !summary;
     const description = offline ? 'Connection lost. Showing saved context; live status is unverified.' : `${counts.live} live, ${counts.saved} saved, ${counts.working} working${failedCount ? `, ${failedCount} failed` : ''}`;
     if (multiple || (s && !counts.live)) $('compact-usage').textContent = `${description} · ${$('compact-usage').textContent}`;
     $('compact-status').title = description;
@@ -273,10 +333,8 @@
     setExpanded(true, focus); changeViewContent();
   }
   function openFromCompact() {
-    if (settingsOpen) leaveSettings(false);
-    const s = representative();
-    if (s && (isPending(s) || s.status === 'completed')) showFocused(s.sessionId, true);
-    else { focused = false; selected = null; syncRowPresentation(); setExpanded(true, true); }
+    showOverview();
+    $('collapse-button').focus({ preventScroll: true });
   }
   function stopTour() {
     tourTimers.forEach(clearTimeout); tourTimers = [];
@@ -312,11 +370,14 @@
     if (s.status === 'waiting_approval') {
       content = `<div class="request-surface"><div class="command-line"><pre class="command">${esc(s.command || s.question || 'Permission requested')}</pre><button class="icon-button" data-action="copy" aria-label="Copy command" title="Copy command">${icon('copy')}</button></div>${s.workingDirectory ? `<span class="path">${esc(s.workingDirectory)}</span>` : ''}</div><div class="request-actions"><span class="scope">${caps.canApprove ? 'Applies to this request only.' : 'Monitoring only. Respond in your terminal.'}</span><div class="decision-buttons" role="group" aria-label="Permission decision">${caps.canApprove && s.requestId ? button('Deny', 'deny') + button('Allow Once', 'allow', 'primary') : terminalAction(s) ? button('Open terminal', 'jump') : ''}</div></div><p class="delivery-note" hidden></p>`;
     } else if (s.status === 'waiting_input') {
-      content = `<div class="request-surface"><p class="question">${esc(s.question || s.prompt || 'Reply in your terminal.')}</p>${caps.canAnswer && s.requestId ? `<div class="option-list">${(s.options || []).map((option, i) => `<button class="text-button option-button" data-action="option" data-option="${i}">${esc(typeof option === 'string' ? option : option.label)}${i === 0 && preview ? '<small>Recommended</small>' : ''}</button>`).join('')}</div><form class="reply-form"><label for="reply-${esc(s.sessionId)}" class="sr-only">Reply to ${esc(avatar.names[s.agentId])}</label><textarea id="reply-${esc(s.sessionId)}" class="reply-input" rows="1" placeholder="Or write a reply...">${esc(drafts.get(requestKey(s)) || '')}</textarea><button class="icon-button" data-action="send" type="submit" aria-label="Send reply" title="Send reply · Ctrl+Enter">${icon('send')}</button></form>` : terminalAction(s) ? button('Open terminal', 'jump') : '<p class="scope">Monitoring only. Respond in your terminal.</p>'}<p class="delivery-note" hidden></p></div>`;
+      const observedOptions = !caps.canAnswer && s.options?.length ? `<ul class="observed-options" aria-label="Choices in the terminal">${s.options.map(option => `<li><span>${esc(typeof option === 'string' ? option : option.label)}</span>${typeof option === 'object' && option.description ? `<small>${esc(option.description)}</small>` : ''}</li>`).join('')}</ul>` : '';
+      content = `<div class="request-surface"><p class="question">${esc(s.question || s.prompt || 'Reply in your terminal.')}</p>${observedOptions}${caps.canAnswer && s.requestId ? `<div class="option-list">${(s.options || []).map((option, i) => `<button class="text-button option-button" data-action="option" data-option="${i}">${esc(typeof option === 'string' ? option : option.label)}${i === 0 && preview ? '<small>Recommended</small>' : ''}</button>`).join('')}</div><form class="reply-form"><label for="reply-${esc(s.sessionId)}" class="sr-only">Reply to ${esc(avatar.names[s.agentId])}</label><textarea id="reply-${esc(s.sessionId)}" class="reply-input" rows="1" placeholder="Or write a reply...">${esc(drafts.get(requestKey(s)) || '')}</textarea><button class="icon-button" data-action="send" type="submit" aria-label="Send reply" title="Send reply · Ctrl+Enter">${icon('send')}</button></form>` : `<p class="scope">Monitoring only. Respond in your terminal.</p>${terminalAction(s) ? button('Open terminal', 'jump') : ''}`}<p class="delivery-note" hidden></p></div>`;
     } else {
       const message = state === 'disconnected' ? 'Terminal closure verified. Last known session data is preserved.' : s.result || (state === 'checking' ? `Verifying the terminal and observer. Last known activity: ${s.activity || avatar.states[s.status] || s.status}.` : state === 'failed' ? s.error || 'The process exited with an error. Open the terminal for details.' : s.activity || 'Waiting for activity.');
       content = `<p class="result-note" style="--state-color:${COLORS[state]}">${glyph(state)}<span>${esc(message)}</span></p>`;
     }
+    const directField = openCodeForms.get(requestKey(s));
+    if (s.status === 'waiting_input' && directField) content = `<div class="request-surface"><p class="question">${esc(s.question || directField.title || 'Reply to OpenCode')}</p>${openCodeFormMarkup(s,directField)}</div>`;
     const archive = window.IslandDesktop?.archiveSession && (s.terminalStatus === 'closed' || (!isPending(s) && (s.status !== 'running' || s.endedAt))) ? `<div class="detail-tools">${button('Archive session', 'archive')}</div>` : '';
     return `<div class="detail-meta">${meta.map((part, i) => `${i ? '<span class="meta-separator">/</span>' : ''}<${i === 0 ? 'strong' : 'span'}>${esc(part)}</${i === 0 ? 'strong' : 'span'}>`).join('')}</div>${s.prompt ? `<p class="prompt">${esc(s.prompt)}</p>` : ''}${content}${archive}`;
   }
@@ -340,6 +401,19 @@
       }
     });
     row.addEventListener('input', (event) => {
+      if (event.target.closest('.opencode-form')) {
+        const current = sessions.find(item => item.sessionId === s.sessionId), key = requestKey(current), field = openCodeForms.get(key);
+        if (event.target.matches('.opencode-text')) {
+          formCustom.set(key,event.target.value);
+          if (field?.type === 'string') { formDrafts.set(key,event.target.value); row.querySelectorAll('.opencode-form input').forEach(input => {input.checked=false;}); }
+        }
+        else if (field) {
+          const values = [...row.querySelectorAll('.opencode-form input:checked')].map(input => field.options[Number(input.value)].value);
+          formDrafts.set(key,field.type === 'multiselect' ? values : values[0]);
+          if (field.type === 'string') { formCustom.delete(key); const editor=row.querySelector('.opencode-text'); if(editor)editor.value=''; }
+        }
+        formErrors.delete(key); updateDeliveryUI(current);
+      }
       if (event.target.matches('.reply-input')) {
         const current = sessions.find((item) => item.sessionId === s.sessionId);
         drafts.set(requestKey(current), event.target.value);
@@ -348,6 +422,7 @@
     row.addEventListener('submit', (event) => {
       event.preventDefault();
       const current = sessions.find((item) => item.sessionId === s.sessionId);
+      if (event.target.matches('.opencode-form')) { void sendOpenCodeAnswer(current); return; }
       sendResponse(current, 'answer', row.querySelector('.reply-input').value);
     });
     return row;
@@ -361,7 +436,7 @@
     row.style.setProperty('--state-color', COLORS[state]);
     row.querySelector('.task-line').innerHTML = `<span class="project-name">${esc(s.projectName || 'Session')}</span><span class="task-separator">/</span>${esc(s.taskTitle || 'Untitled task')}`;
     const activity = row.querySelector('.activity-text');
-    const text = state === 'disconnected' ? 'Offline · terminal closed' : state === 'checking' ? `Checking · last known: ${avatar.states[s.status] || s.status}` : state === 'idle' ? 'Idle · ready for the next task' : s.activity || avatar.states[state] || 'Idle';
+    const text = state === 'disconnected' ? 'Offline · terminal closed' : state === 'checking' ? `Checking · last known: ${avatar.states[s.status] || s.status}` : state === 'idle' ? 'Idle · ready for the next task' : openCodeForms.get(requestKey(s)) ? 'Waiting for your reply' : s.activity || avatar.states[state] || 'Idle';
     if (activity.textContent !== text) {
       activity.textContent = text;
       if (!reduced()) activity.animate([{ opacity: .15, transform: 'translateY(2px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 160, easing: 'ease-out' });
@@ -375,14 +450,18 @@
     jumpButton.title = preview ? `Preview: open ${s.terminalName || 'terminal'}` : nativeOrca(s) ? terminalBusy ? 'Checking Orca terminal…' : 'Open or link source terminal in Orca' : s.capabilities?.canJump ? `Open ${s.terminalName || 'session terminal'}` : 'Terminal navigation is unavailable for this integration';
     jumpButton.setAttribute('aria-label', jumpButton.title);
     // Stable detail DOM preserves caret and draft on unrelated progress updates.
-    const detailSignature = JSON.stringify([s.requestId, s.status, !isPending(s) && state, s.prompt, s.question, s.options, s.command, s.result, s.error, s.capabilities, s.terminalName, s.modelName]);
+    const detailSignature = JSON.stringify([s.requestId, s.status, !isPending(s) && state, s.prompt, s.question, s.options, s.command, s.result, s.error, s.capabilities, s.terminalName, s.modelName, openCodeForms.get(requestKey(s))]);
     if (row.dataset.detail !== detailSignature) {
+      const detail = row.querySelector('.detail-content');
+      const focusedAction = detail.contains(document.activeElement) ? document.activeElement.dataset.action : null;
       row.querySelector('.detail-content').innerHTML = detailMarkup(s); row.dataset.detail = detailSignature;
+      if (focusedAction === 'jump') detail.querySelector('[data-action="jump"]')?.focus({preventScroll:true});
     }
     row.classList.toggle('is-selected', selected === s.sessionId);
     row.querySelector('.session-toggle').setAttribute('aria-expanded', String(selected === s.sessionId));
     row.querySelector('.detail-shell').inert = selected !== s.sessionId;
     updateDeliveryUI(s);
+    void loadOpenCodeForm(s);
   }
   function renderSessions(replayId) {
     const container = $('sessions-list');
@@ -427,16 +506,20 @@
   function updateDeliveryUI(s) {
     const row = rowMap.get(s.sessionId); if (!row) return;
     const status = delivery.get(requestKey(s));
-    const blocked = status === 'sending' || status === 'acknowledged' || disconnected(s);
+    const blocked = status === 'sending' || status === 'acknowledged' || status === 'uncertain' || disconnected(s);
     row.querySelectorAll('.detail-content button:not([data-action="copy"]):not([data-action="jump"]):not([data-action="archive"])').forEach((el) => { el.disabled = Boolean(blocked); });
     // Read-only retains textarea focus and selection while delivery is unavailable.
     const input = row.querySelector('.reply-input');
     if (input) input.readOnly = Boolean(blocked);
+    row.querySelectorAll('.opencode-form input').forEach(input => { input.disabled = Boolean(blocked); });
+    const send = row.querySelector('.answer-send');
+    if (send) { send.textContent = status === 'sending' ? 'Sending...' : status === 'acknowledged' ? 'Sent' : 'Send'; send.setAttribute('aria-busy',String(status === 'sending')); }
     const note = row.querySelector('.delivery-note');
     if (note) {
-      note.hidden = !status && !disconnected(s);
+      note.hidden = !status && !disconnected(s) && !formErrors.has(requestKey(s));
       note.dataset.error = String(status === 'error');
       note.textContent = status === 'sending' ? 'Sending...' : status === 'acknowledged' ? preview ? 'Preview response received.' : 'Response received. Waiting for agent.' : status === 'error' ? 'Could not deliver. Try again.' : disconnected(s) ? 'Last known request. Fresh observer activity is required before responding.' : '';
+      if (formErrors.has(requestKey(s))) { note.textContent = formErrors.get(requestKey(s)); note.dataset.error = 'true'; }
     }
   }
   async function sendResponse(s, action, value) {
@@ -660,7 +743,7 @@
     }
     $('provider-title').textContent = `${avatar.names[providerPage]} CLI`;
     $('provider-usage-detail').innerHTML = window.IslandUsage.detail(providerPage);
-    $('provider-diagnostics').textContent = providerPage === 'codex' ? codexSetupError || (codexSetup?.registered ? 'Hooks registered. Review trust in Codex using /hooks. Approval and replies remain in Codex.' : 'Return to Agents and use Connect to register monitoring hooks.') : 'Monitoring only. Approvals and answers remain in the provider terminal. Account quota availability is shown below. Link the source terminal explicitly when needed.';
+    $('provider-diagnostics').textContent = providerPage === 'codex' ? codexSetupError || (codexSetup?.registered ? 'Hooks registered. Review trust in Codex using /hooks. Approval and replies remain in Codex.' : 'Return to Agents and use Connect to register monitoring hooks.') : providerPage === 'opencode' ? 'OpenCode 2.3.0 supports replies to simple questions through its connected terminal. Other forms and command approvals remain in OpenCode. Link the source terminal explicitly when needed.' : 'Monitoring only. Approvals and answers remain in the provider terminal. Account quota availability is shown below. Link the source terminal explicitly when needed.';
   }
   function renderProviderSetup() {
     const visible = !preview && providerPage && providerPage !== 'codex' && !terminalPickerSession && Boolean(window.IslandDesktop?.providerIntegration);
@@ -668,7 +751,7 @@
     if (!visible) return;
     const setup = providerSetups.get(providerPage) || {};
     const verified = setup.reviewed && !offline && retained.some(s => s.agentId === providerPage && s.connectionStatus === 'connected' && s.eventKind !== 'recovery' && s.lastSeenAt > setup.started);
-    const review = providerPage === 'antigravity' ? 'Restart Antigravity, open /hooks, and review threadcap-monitor. Then send a prompt in your terminal.' : 'Review the installed Threadcap plugin. Restart OpenCode CLI to enable terminal-close detection, then open a session.';
+    const review = providerPage === 'antigravity' ? 'Restart Antigravity, open /hooks, and review threadcap-monitor. Then send a prompt in your terminal.' : 'Review the installed Threadcap plugin and question connector. Restart OpenCode CLI to enable terminal-close detection and supported question replies, then open a session.';
     $('provider-connect-note').textContent = providerSetupBusy ? 'Checking integration…' : setup.error || (verified ? 'Fresh activity verified. Monitoring is connected.' : setup.registered ? `${setup.version || ''} · Registered. ${review} Registration alone does not verify live activity.` : setup.version ? `${setup.version} · ${setup.supported ? 'Compatible CLI detected. Connect installs only the Threadcap observer.' : 'This version is not supported; existing configuration is preserved.'}` : 'Detect the installed CLI, connect its observer, review it, then verify fresh activity. No task is launched automatically.');
     for (const id of ['provider-detect','provider-connect','provider-reviewed','provider-verify']) $(id).disabled = providerSetupBusy;
     $('provider-connect').disabled = providerSetupBusy || setup.supported !== true;
@@ -811,7 +894,8 @@
     }
     if (!sessions.some((s) => s.sessionId === selected)) { selected = null; focused = false; }
     renderSessions();
-    if (reveal && autoOpen && !expanded && !settingsOpen && !document.activeElement?.matches('input,textarea,[contenteditable="true"]')) showFocused(reveal, false);
+    const browsingOverview = expanded && !selected && !pointerInside && !$('sessions-list').contains(document.activeElement);
+    if (reveal && autoOpen && (!expanded || browsingOverview) && !settingsOpen && !document.activeElement?.matches('input,textarea,[contenteditable="true"]')) showFocused(reveal, false);
     clearTimeout(cooldownTimer);
     const deadlines = [...presentation.completions.values()].filter(time => time > Date.now());
     if (deadlines.length) cooldownTimer = setTimeout(() => { renderSessions(); scheduleCooldown(); }, Math.min(...deadlines) - Date.now() + 20);

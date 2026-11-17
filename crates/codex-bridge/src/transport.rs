@@ -7,10 +7,14 @@ use std::{
 };
 
 pub fn request(port: u16, method: &str, route: &str, body: Option<&Value>) -> Result<Value> {
+    request_with_timeout(port, method, route, body, Duration::from_millis(200))
+}
+
+pub fn request_with_timeout(port: u16, method: &str, route: &str, body: Option<&Value>, timeout: Duration) -> Result<Value> {
     let address = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, port));
     let mut stream = TcpStream::connect_timeout(&address, Duration::from_millis(120))?;
-    stream.set_read_timeout(Some(Duration::from_millis(200)))?;
-    stream.set_write_timeout(Some(Duration::from_millis(200)))?;
+    stream.set_read_timeout(Some(timeout))?;
+    stream.set_write_timeout(Some(timeout))?;
     let body = body
         .map(serde_json::to_vec)
         .transpose()?
