@@ -47,6 +47,6 @@ Inspect the actual GitHub run and download/check its artifact. Local success doe
 
 ## Release
 
-Use a version/tag matching `package.json` and the desktop configuration. Attach the staged installer, helper, guides/notices, and `SHA256SUMS.txt`. Describe the release as a Windows x64 monitoring preview, list supported CLI versions, and link the changelog and limitations. Downloaded artifact integrity and native installation behavior require their own checks. Do not describe unsigned builds as signed or a checksum as identity verification.
+Use a version/tag matching `package.json` and the desktop configuration. Attach the files from `dist/release/<version>/`, including the installer, helper, local Codex launcher, guides, notices, and `SHA256SUMS.txt`. This version-specific folder keeps historical installers outside the upload. Describe the release as a Windows x64 preview, list verified CLI versions, and link the changelog and capability limits. Check downloaded artifact hashes against the manifest and verify upgrade behavior separately. State that the installer is unsigned when no signature is present.
 
 Compatibility executable names, storage paths, integration tags, and NSIS upgrade keys remain unchanged for existing users. Documentation-only publication preparation does not require reinstalling the user's application.

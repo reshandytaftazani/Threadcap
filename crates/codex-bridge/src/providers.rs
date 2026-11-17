@@ -135,12 +135,17 @@ pub fn record(path: &Path, provider: &str, event: &Value, kind: Option<&str>) ->
         } else { report["question"]=Value::Null; report["command"]=Value::Null; report["options"]=json!([]); }
     }
     if provider == "antigravity" {
-        report["agentProcess"]=crate::agent_process::capture().map(serde_json::to_value).transpose()?.unwrap_or(Value::Null);
         let prompt = text(event,"lastUserInput");
         if !prompt.is_empty() && report["prompt"] != prompt { report["prompt"] = json!(prompt); report["taskTitle"] = json!(prompt.chars().take(140).collect::<String>()); report["eventKind"] = json!("prompt"); }
+        if let Some(process) = crate::agent_process::capture() {
+            report["agentProcess"] = serde_json::to_value(process)?;
+        } else if kind == Some("SessionStart") || report["eventKind"] == "prompt" {
+            report["agentProcess"] = Value::Null;
+        }
         if let Some(directory) = event["workspacePaths"][0].as_str() { report["workingDirectory"] = json!(directory); report["projectName"] = json!(Path::new(directory).file_name().unwrap_or_default().to_string_lossy()); }
         let model = text(event,"modelName"); if !model.is_empty() { report["modelName"] = json!(model); }
         if let Some(binding) = crate::terminal::Binding::from_lookup(|key|std::env::var(key).ok()) { crate::terminal::save_in_transaction(&tx,&sid,revision,Some(&binding))?; }
+        else {crate::terminal::carry_forward(&tx,&sid,revision)?;}
     }
     tx.execute("INSERT INTO provider_sessions VALUES(?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body",params![sid,serde_json::to_string(&report)?])?;
     tx.execute("INSERT INTO provider_events VALUES(?,?)",params![sid,event_id])?;

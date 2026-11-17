@@ -12,9 +12,9 @@ Unreleased direct replies: simple OpenCode 2.3.0 question forms with one support
 | OpenCode monitoring | Server observer plus TUI lifetime plugin | Connect accepts 2.2.7/2.3.0. Real TUI lifetime tested on 2.3.0, including multiple clients, last-client closure, forced termination, restart, and resumption. |
 | Closure/Archive | Confirmed CLI/session end or terminal closure archives immediately for all providers | No age/heartbeat-based inference. Unverified legacy rows can remain visible until valid evidence is available. Context and protected requests remain stored. |
 | Reconnect/restart | Retained context appears as Checking and links are revalidated | Old notifications are not replayed; fresh evidence is needed for supported navigation or reactivation. |
-| Terminal navigation | Native local Orca bindings with identity and PTY-incarnation checks | Codex is the documented verified path. No general exact-tab claim for Antigravity, OpenCode, PowerShell, Windows Terminal, WSL, or remote hosts. |
+| Terminal navigation | Local Orca pane binding for all three providers. Current source adds explicit linking of Windows Console windows and accessible Windows Terminal tabs or windows. | See [navigation scope](../integrations/orca-navigation.md) and [verification](../verification/provider-navigation.md). Orca chats without panes and exact Windows Terminal split-pane selection remain unsupported. |
 | Quota | Codex account snapshots; Antigravity official status-line payload | Remaining units, freshness, and unavailable states are explicit. Account-to-session mapping is unverified; OpenCode quota is unavailable. |
-| Requests | Observe supported requests and reveal fresh attention episodes | Decisions and answers stay in the provider terminal. Generic bridge actions return unsupported. |
+| Requests | Observe supported requests and reveal fresh attention episodes | Current source supports direct replies to simple OpenCode 2.3.0 questions through the TUI connector. Other requests use the provider terminal. Generic bridge actions remain unsupported. |
 | Interface | Horizontal-only hover, in-island Settings, pixel marks/state companions, reduced motion | Synthetic UI checks and selected native runs; broad human acceptance and mixed-DPI validation remain outstanding. |
 
 ## Evidence

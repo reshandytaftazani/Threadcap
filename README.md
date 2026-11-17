@@ -2,13 +2,13 @@
 
 A compact Windows companion for **Codex CLI, Antigravity CLI, and OpenCode CLI**. Keep an eye on coding sessions from a small island attached to the top of your screen.
 
-**0.8.4 · Windows x64 preview · Monitoring only**
+**Windows x64 preview · 0.8.4 baseline**
 
-Unreleased source adds direct replies to simple OpenCode 2.3.0 questions through its TUI connector. Other forms and command approvals remain in the terminal. See [scope, setup, and verification](docs/verification/opencode-replies.md).
+The current source adds [direct replies to simple OpenCode 2.3.0 questions](docs/verification/opencode-replies.md) and [terminal links for Orca, PowerShell, and Windows Terminal](docs/integrations/orca-navigation.md).
 
 [Releases](https://github.com/reshandytaftazani/Threadcap/releases) · [Windows build](https://github.com/reshandytaftazani/Threadcap/actions/workflows/windows.yml) · [Report a bug](https://github.com/reshandytaftazani/Threadcap/issues/new/choose)
 
-Threadcap shows session activity, surfaces requests, and keeps account quota separate from task progress. Approvals and answers stay in your agent terminal.
+Threadcap shows session activity, surfaces requests, and keeps account quota separate from task progress.
 
 ![Threadcap session overview with synthetic verification sessions](docs/images/session-overview.png)
 
@@ -46,7 +46,7 @@ See [setup and troubleshooting](docs/guides/getting-started.md), [Codex setup](d
 - **Settings** stays inside the island, with Agents, Appearance, and Behavior pages.
 - **Requests** can reveal automatically without taking OS focus; this is configurable.
 - **Archive** holds sessions whose terminal or CLI end is confirmed. Closure moves them out of the main list immediately for every provider. Completion or lost connectivity alone does not establish closure.
-- **Terminal navigation** is available only for verified local Orca bindings. Other hosts and unbound sessions may require manual selection or remain unavailable.
+- **Terminal navigation** returns to a verified local Orca pane or a Windows terminal you link. Choose a standalone PowerShell console, an accessible Windows Terminal tab, or a Windows Terminal window.
 - **Reduced motion** removes geometric transitions and avatar loops while keeping status visible.
 
 ## Capability boundaries
@@ -54,9 +54,9 @@ See [setup and troubleshooting](docs/guides/getting-started.md), [Codex setup](d
 | Capability | Codex | Antigravity | OpenCode |
 | --- | --- | --- | --- |
 | Session/activity monitoring | Hooks, after trust review | Lifecycle hooks | Server and TUI plugins |
-| Closure evidence | Session-end hooks / verified pane | Exact CLI process / verified pane | Last verified owning TUI client exits |
+| Closure evidence | Session-end hooks, verified Orca pane, or [local-client launcher](docs/integrations/codex.md#powershell-terminal-closure) | Exact CLI process or verified Orca pane | Last verified owning TUI client exits |
 | Account quota | Read-only account snapshot | Official CLI status-line payload | Unavailable |
-| Approve or answer inside Threadcap | Unavailable | Unavailable | Unavailable |
+| Approve or answer inside Threadcap | Use the terminal | Use the terminal | Current source can answer supported 2.3.0 questions. Use the terminal for command approvals and other forms. |
 
 Quota is shared account information, not per-session progress. Account-to-session mapping remains unverified. Stale or unavailable data is labeled. Native pane navigation, live-provider checks, and fixtures have different verification scopes; see [current capabilities and evidence](docs/guides/capabilities.md).
 

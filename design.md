@@ -18,6 +18,8 @@ Runtime decision: the primary desktop host now uses **Tauri 2 + Rust**, retainin
 
 ## Threadcap revision: approved planning
 
+An explicit Codex local-client launch can provide process exit evidence when a standalone PowerShell window or tab closes before delivering `SessionEnd`. Watch the verified originating process by PID and creation time. Archive on confirmed exit while preserving task and request context. An unbound session or a shared daemon alone does not establish the originating client. Process observation does not add exact tab navigation outside local Orca.
+
 Version 0.8.1 override: confirmed Antigravity CLI exit (including `/exit`) or verified closure of its associated pane removes the session from Sessions immediately, through reversible Archive. This ignores the general archive delay/Off preference for that provider only. A completed turn, a lost bridge, or an unverified process does not establish exit. The native observer checks the exact hook-owning PID and creation time; PID reuse cannot keep an old session alive. Preserve context, requests, deletion guards, and CLI history. See [Antigravity exit behavior](docs/verification/releases/v0.8.1-antigravity-exit.md).
 
 The owner selected the name Threadcap and the original **Edge signal, concept A** application mark in [this vector](docs/design/concepts/threadcap-mark-a.svg). This is distinct from candidate A in the historical 0.7.0 icon study. Version 0.8.0 applies this public identity while retaining compatibility identifiers and storage; see the implementation report for upgrade boundaries.
@@ -475,7 +477,13 @@ OpenCode v2 forms must retain visible field questions, choice labels, and suppli
 
 Terminal jump uses the actual target known by the adapter. If only the application is known, say `Open Windows Terminal`; do not promise the exact tab. If the target is gone, show `Terminal not found` with a copyable project path. Do not activate unrelated applications as a fallback.
 
-### Codex terminals in local Orca, version 0.6.2
+### Source terminals on Windows
+
+The source-terminal picker lists verified local Orca panes, standalone Windows Console windows, and Windows Terminal tabs or windows. Orca retains automatic attribution where the provider supplies a valid pane. Windows targets require a deliberate selection. Show the target kind next to its title and label a window-only selection `Link and open window`. Confirm foreground focus and, for explicitly selected Windows Terminal tabs, confirm the accessible tab selection before leaving Settings. Saved window choices are navigation links and do not establish agent-process ownership or session closure. Orca chat sessions without a pane have no terminal target.
+
+Current source supports all three primary providers through the separate native connector. OpenCode Orca attribution comes from a live TUI owner. Multiple owning terminals require explicit choice unless an existing verified link selects one. A sole remaining owner may replace an exited owner, and a changed PTY incarnation requires relinking. Confirmed closed sessions cannot activate leftover shells. See [terminal navigation](docs/integrations/orca-navigation.md) and [verification](docs/verification/provider-navigation.md).
+
+The following 0.6.2 description records the initial Codex implementation; its provider restrictions are superseded by the current paragraph and linked guide.
 
 The native host can return to a verified local Orca Codex terminal. This is a separate native connector, not permission to approve or answer through monitoring hooks. Generic bridge capabilities remain unchanged.
 

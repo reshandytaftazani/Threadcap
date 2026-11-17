@@ -57,8 +57,9 @@ async function main(){
     check('Chooser content is visibly painted after its transition',await evaluate("Number(getComputedStyle(document.getElementById('settings-scroll')).opacity)>.99 && document.querySelector('.terminal-choice').getBoundingClientRect().height>=44"));
     const clip=await evaluate("(()=>{const r=document.getElementById('island-surface').getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,scale:1};})()");
     const screenshot=await send('Page.captureScreenshot',{format:'png',clip});fs.mkdirSync(path.join(root,'artifacts'),{recursive:true});fs.writeFileSync(path.join(root,'artifacts/orca-terminal-picker.png'),Buffer.from(screenshot.data,'base64'));
-    // Resolve the same target from the rendered safe handle instead of assuming terminal-list ordering.
-    await evaluate(`(()=>{const buttons=[...document.querySelectorAll('.terminal-choice')];const button=buttons.find(b=>b.textContent.includes(${JSON.stringify(expected)}));if(!button)throw Error('Owned terminal absent');button.click();})()`);
+    // Resolve the structured choice before its display label is rendered.
+    const targetIndex=unbound.terminals.indexOf(target);
+    await evaluate(`(()=>{const button=document.querySelector('[data-terminal-index="${targetIndex}"]');if(!button)throw Error('Owned terminal absent');button.click();})()`);
     check('Link and open collapses after real Orca acknowledgment',await until('!IslandPreview.snapshot().expanded'));
     links=JSON.parse(fs.readFileSync(linkFile,'utf8'));
     check('Manual choice is durably saved for the selected session',links['codex:legacy-fixture']?.binding.handle===expected && links['codex:legacy-fixture'].manual===true);

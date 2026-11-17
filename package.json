@@ -21,6 +21,8 @@
     "test:native": "node scripts/build/codex-bridge.cjs && cargo test --locked --manifest-path src-tauri/Cargo.toml",
     "test:sessions": "node tests/native/check-threadcap-native.cjs",
     "test:session-opening": "node tests/native/check-session-opening-native.cjs",
+    "test:navigation": "node tests/native/check-provider-navigation-native.cjs",
+    "test:windows-navigation": "node tests/native/check-windows-terminal-navigation.cjs",
     "test:agent-icons": "node tests/native/check-agent-companions-native.cjs",
     "test:antigravity-exit": "node tests/native/check-antigravity-exit-native.cjs",
     "test:observer-upgrade": "node tests/native/check-observer-upgrade-native.cjs",

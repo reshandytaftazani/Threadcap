@@ -15,7 +15,9 @@ For Antigravity, a disabled status line stays disabled; quota can remain unavail
 
 Hover widens the strip without opening the panel. Click to view sessions; use Back/Escape to return through Settings and detail pages. Outside-click collapses the island. The global shortcut is `Ctrl+Alt+Space` when registration succeeds; Settings reports if it is unavailable.
 
-Requests may reveal automatically, subject to attention settings and interaction protection. Respond in the agent terminal. A finished turn cools down visually to Idle while its terminal remains available.
+Requests may reveal automatically, subject to attention settings and interaction protection. Simple OpenCode 2.3.0 questions can be answered in the island when the TUI connector is available. Respond to other questions and approvals in the agent terminal. A finished turn cools down visually to Idle while its terminal remains available.
+
+Use the terminal button to return to a verified Orca pane or choose the original PowerShell or Windows Terminal target. Windows Terminal distinguishes tab links from window links. Orca chats without a terminal pane stay in Orca. See [terminal navigation](../integrations/orca-navigation.md).
 
 Confirmed closure immediately moves a session into Archive. Missing events or a disconnected observer do not prove that its terminal closed. OpenCode sessions stay visible while any verified TUI client owns them. See [closure rules](../verification/releases/v0.8.4-client-closure.md) for legacy and shared-server cases.
 

@@ -8,6 +8,7 @@ use std::{
     time::Duration,
 };
 use uuid::Uuid;
+use crate::agent_process::{self, Identity, Presence};
 
 #[derive(Clone, Default, Deserialize, Serialize)]
 struct Session {
@@ -38,7 +39,8 @@ pub(crate) fn open(path: &Path) -> Result<Connection> {
     let db = Connection::open(path)?;
     db.busy_timeout(Duration::from_secs(1))?;
     db.execute_batch("CREATE TABLE IF NOT EXISTS codex_sessions (id TEXT PRIMARY KEY, body TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS codex_events (session_id TEXT, event_key TEXT, revision INTEGER NOT NULL, PRIMARY KEY(session_id,event_key));")?;
+        CREATE TABLE IF NOT EXISTS codex_events (session_id TEXT, event_key TEXT, revision INTEGER NOT NULL, PRIMARY KEY(session_id,event_key));
+        CREATE TABLE IF NOT EXISTS codex_clients (session_id TEXT PRIMARY KEY, identity TEXT NOT NULL);")?;
     Ok(db)
 }
 
@@ -77,14 +79,14 @@ fn operation(event: &Value) -> String {
 
 /// Commit a complete, ordered producer snapshot before attempting optional local delivery.
 pub fn record(path: &Path, event: &Value) -> Result<Option<Value>> {
-    record_internal(path,event,None)
+    record_internal(path,event,None,None)
 }
 
-pub fn record_with_terminal(path:&Path,event:&Value,binding:Option<&crate::terminal::Binding>) -> Result<Option<Value>> {
-    record_internal(path,event,Some(binding))
+pub fn record_with_terminal(path:&Path,event:&Value,binding:Option<&crate::terminal::Binding>, owner: Option<&Identity>) -> Result<Option<Value>> {
+    record_internal(path,event,Some(binding),owner)
 }
 
-fn record_internal(path:&Path,event:&Value,terminal:Option<Option<&crate::terminal::Binding>>) -> Result<Option<Value>> {
+fn record_internal(path:&Path,event:&Value,terminal:Option<Option<&crate::terminal::Binding>>, owner: Option<&Identity>) -> Result<Option<Value>> {
     let name = text(event, "hook_event_name").context("Missing hook_event_name")?;
     if !crate::EVENTS.contains(&name) {
         return Ok(None);
@@ -326,8 +328,55 @@ fn record_internal(path:&Path,event:&Value,terminal:Option<Option<&crate::termin
         if let Some(binding)=binding { crate::terminal::save_in_transaction(&tx,&sid,revision,Some(binding))?; }
         else { crate::terminal::carry_forward(&tx,&sid,revision)?; }
     }
+    if name == "SessionEnd" {
+        tx.execute("DELETE FROM codex_clients WHERE session_id=?", [&sid])?;
+    } else if let Some(owner) = owner {
+        tx.execute(
+            "INSERT INTO codex_clients VALUES (?,?) ON CONFLICT(session_id) DO UPDATE SET identity=excluded.identity",
+            params![sid, serde_json::to_string(owner)?],
+        )?;
+    } else if name == "UserPromptSubmit" || (name == "SessionStart" && text(event, "source") != Some("compact")) {
+        tx.execute("DELETE FROM codex_clients WHERE session_id=?", [&sid])?;
+    }
     tx.commit()?;
     Ok(Some(session.report))
+}
+
+pub fn reconcile_clients(path: &Path) -> Result<Vec<Value>> {
+    if !path.is_file() { return Ok(Vec::new()); }
+    let mut db = open(path)?;
+    let closed = {
+        let mut statement = db.prepare("SELECT session_id,identity FROM codex_clients")?;
+        let rows = statement.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))?;
+        let mut closed = Vec::new();
+        for row in rows {
+            let (sid, identity) = row?;
+            let owner: Identity = serde_json::from_str(&identity)?;
+            if agent_process::probe(&owner) == Presence::Exited { closed.push((sid, identity)); }
+        }
+        closed
+    };
+    let mut reports = Vec::new();
+    for (sid, identity) in closed {
+        let tx = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if tx.execute("DELETE FROM codex_clients WHERE session_id=? AND identity=?", params![sid, identity])? == 0 { continue; }
+        let body: Option<String> = tx.query_row("SELECT body FROM codex_sessions WHERE id=?", [&sid], |row| row.get(0)).optional()?;
+        if let Some(body) = body {
+            let mut session: Session = serde_json::from_str(&body)?;
+            close_turn(&mut session);
+            let revision = session.report["sourceRevision"].as_u64().context("Missing Codex session revision")? + 1;
+            session.report["sourceRevision"] = json!(revision);
+            session.report["eventId"] = json!(Uuid::new_v4().to_string());
+            session.report["eventKind"] = json!("session_end");
+            session.report["connectionStatus"] = json!("disconnected");
+            session.report["observedAt"] = json!(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis() as u64);
+            tx.execute("UPDATE codex_sessions SET body=? WHERE id=?", params![serde_json::to_string(&session)?, sid])?;
+            crate::terminal::carry_forward(&tx, &sid, revision)?;
+            reports.push(session.report);
+        }
+        tx.commit()?;
+    }
+    Ok(reports)
 }
 
 /// Clear observer-owned cached context while preserving source revision identity.
@@ -345,6 +394,7 @@ pub fn purge_cached(path: &Path, targets: &[(String,u64)]) -> Result<usize> {
         if revision > *barrier { skipped += 1; continue; }
         // Preserve only revision identity so the next genuine prompt can advance past deletion.
         let cleared = Session { report: json!({"agentId":"codex","sessionId":sid,"sourceRevision":revision,"status":"idle","connectionStatus":"disconnected","eventKind":"purged","eventId":Uuid::new_v4().to_string(),"capabilities":{"canApprove":false,"canAnswer":false,"canJump":false},"supportsAcknowledgment":false}), ..Session::default() };
+        tx.execute("DELETE FROM codex_clients WHERE session_id=?", [sid])?;
         tx.execute("UPDATE codex_sessions SET body=? WHERE id=?", params![serde_json::to_string(&cleared)?,sid])?;
         tx.execute("DELETE FROM codex_events WHERE session_id=?", [sid])?;
         if has_links { tx.execute("DELETE FROM orca_terminal_links WHERE session_id=?", [sid])?; }

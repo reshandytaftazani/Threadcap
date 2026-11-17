@@ -20,15 +20,15 @@ mod windows {
             Threading::{GetProcessTimes, OpenProcess, QueryFullProcessImageNameW, WaitForSingleObject, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE}},
     };
 
-    pub fn identity(pid: u32, require_agy: bool) -> Option<Identity> {
+    pub fn identity(pid: u32, image_name: Option<&str>) -> Option<Identity> {
         unsafe {
             let handle=OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,0,pid);
             if handle.is_null() { return None; }
             let mut created: FILETIME=std::mem::zeroed(); let mut exit=created;let mut kernel=created;let mut user=created;
             let valid=GetProcessTimes(handle,&mut created,&mut exit,&mut kernel,&mut user)!=0;
             let mut path=[0u16;32768];let mut size=path.len() as u32;
-            let image=!require_agy || (QueryFullProcessImageNameW(handle,0,path.as_mut_ptr(),&mut size)!=0
-                && std::path::Path::new(&String::from_utf16_lossy(&path[..size as usize])).file_name().is_some_and(|name|name.to_string_lossy().eq_ignore_ascii_case("agy.exe")));
+            let image=image_name.is_none_or(|expected| QueryFullProcessImageNameW(handle,0,path.as_mut_ptr(),&mut size)!=0
+                && std::path::Path::new(&String::from_utf16_lossy(&path[..size as usize])).file_name().is_some_and(|name|name.to_string_lossy().eq_ignore_ascii_case(expected)));
             CloseHandle(handle);
             (valid && image).then(||Identity{pid,created:(((created.dwHighDateTime as u64)<<32)|created.dwLowDateTime as u64).to_string()})
         }
@@ -47,7 +47,7 @@ mod windows {
         }
     }
 
-    pub fn capture() -> Option<Identity> {
+    pub fn capture_ancestor(image: &str) -> Option<Identity> {
         unsafe {
             let snapshot=CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);
             if snapshot==INVALID_HANDLE_VALUE { return None; }
@@ -61,10 +61,16 @@ mod windows {
             }
             CloseHandle(snapshot);
             let mut pid=std::process::id();let mut visited=std::collections::HashSet::new();
+            let mut child_created = u64::MAX;
             for _ in 0..16 {
                 if !visited.insert(pid) {break;}
                 let (parent,name)=parents.get(&pid)?;
-                if name.eq_ignore_ascii_case("agy.exe") { return identity(pid,true); }
+                let matches = name.eq_ignore_ascii_case(image);
+                let process = identity(pid, matches.then_some(image))?;
+                let created = process.created.parse::<u64>().ok()?;
+                if created > child_created { return None; }
+                if matches { return Some(process); }
+                child_created = created;
                 pid=*parent;
             }
             None
@@ -82,7 +88,7 @@ mod windows {
                 found=Process32NextW(snapshot,&mut entry);
             }
             CloseHandle(snapshot);
-            let captured=identity(parent?,false)?;let child=identity(std::process::id(),false)?;
+            let captured=identity(parent?,None)?;let child=identity(std::process::id(),None)?;
             (captured.created.parse::<u64>().ok()?<=child.created.parse::<u64>().ok()?).then_some(captured)
         }
     }
@@ -120,11 +126,12 @@ mod windows {
 }
 
 #[cfg(windows)]
-pub use windows::{capture, capture_parent, probe, any_antigravity_running};
+pub use windows::{capture_ancestor, capture_parent, probe, any_antigravity_running};
+pub fn capture() -> Option<Identity> { capture_ancestor("agy.exe") }
 #[cfg(not(windows))]
 pub fn capture_parent()->Option<Identity> {None}
 #[cfg(not(windows))]
-pub fn capture() -> Option<Identity> { None }
+pub fn capture_ancestor(_: &str) -> Option<Identity> { None }
 #[cfg(not(windows))]
 pub fn probe(_: &Identity) -> Presence { Presence::Unknown }
 #[cfg(not(windows))]
@@ -135,10 +142,10 @@ mod tests {
     use super::*;
     #[test]
     fn process_exit_and_pid_reuse_are_distinct_from_an_unknown_observation() {
-        let identity=super::windows::identity(std::process::id(),false).unwrap();
+        let identity=super::windows::identity(std::process::id(),None).unwrap();
         assert_eq!(probe(&identity),Presence::Running);
         assert_eq!(probe(&Identity{created:"0".into(),..identity}),Presence::Exited);
         assert_eq!(probe(&Identity{pid:0,created:"0".into()}),Presence::Unknown);
-        assert!(super::windows::identity(std::process::id(),true).is_none());
+        assert!(super::windows::identity(std::process::id(),Some("agy.exe")).is_none());
     }
 }

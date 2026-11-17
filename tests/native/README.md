@@ -8,6 +8,8 @@ These are opt-in scripts, separate from JavaScript unit tests and Rust crate tes
 | --- | --- |
 | `npm run test:sessions` | Session presentation, restart recovery, Archive, and selected native interaction fixtures. |
 | `npm run test:session-opening` | Explicit strip/shortcut opening shows Sessions while fresh requests retain automatic reveal; isolated current-build fixtures only. |
+| `npm run test:navigation` | Current-build real Orca switching for Codex/Antigravity hook fixtures and real OpenCode TUI owners, including multiple clients, closed owners, and rejected PTY reuse. Also checks forced local Codex process exit without Orca metadata or a SessionEnd hook. Runs only owned fixtures without model turns. Requires Orca and OpenCode 2.3.0. |
+| `npm run test:windows-navigation` | Opens and closes an owned standalone PowerShell console and a two-tab Windows Terminal window. Checks real tab selection, foreground focus, and persisted links using the isolated native app. |
 | `npm run test:agent-icons` | Current-build companion geometry, grouped status, hover, reduced motion, and a short WebView2 recording with isolated synthetic sessions. Rejects an executable older than the relevant frontend sources. |
 | `npm run test:antigravity-exit` | Owned process lifetime and immediate archive behavior. |
 | `npm run test:antigravity-usage` | Quota fixtures, status-line forwarding, cache, and native IPC. |

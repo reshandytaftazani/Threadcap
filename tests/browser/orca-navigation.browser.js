@@ -19,7 +19,7 @@
   try{
     await ready;const w=frame.contentWindow,d=w.document;w.IslandPreview.setReducedMotion(true);w.IslandPreview.showOverview();
     const button=()=>d.querySelector('.jump-button');
-    check('Native Codex navigation offers opening or linking instead of not connected',!button().disabled && button().title==='Open or link Codex terminal in Orca');
+    check('Native navigation offers opening or linking a source terminal',!button().disabled && button().title==='Open or link source terminal');
     check('Native navigation does not grant producer response capabilities',!w.IslandPreview.snapshot().sessions[0].capabilities.canJump && !d.querySelector('[data-action=allow]'));
     button().click();button().click();check('Duplicate navigation clicks are disabled',button().disabled);await wait(100);
     check('Unbound session opens an in-island terminal chooser',w.IslandPreview.snapshot().settingsOpen && !d.getElementById('terminal-picker').hidden && !d.querySelector('dialog'));
@@ -29,7 +29,7 @@
     w.badAck=true;w.IslandPreview.showOverview();button().click();await wait(100);d.querySelector('.terminal-choice').click();await wait(100);
     check('Missing positive acknowledgment leaves a readable error',w.IslandPreview.snapshot().settingsOpen && d.getElementById('terminal-picker-note').dataset.error==='true');
     w.badAck=false;w.emptyTerminals=true;d.getElementById('terminal-refresh').click();await wait(100);
-    check('An empty list explains how to refresh without guessing a terminal',d.getElementById('terminal-choices').children.length===0 && d.getElementById('terminal-picker-note').textContent.includes('No matching live local Codex terminals'));
+    check('An empty list explains why an Orca chat has no terminal target',d.getElementById('terminal-choices').children.length===0 && d.getElementById('terminal-picker-note').textContent.includes('No terminal targets found'));
     w.failNavigation=true;d.getElementById('terminal-refresh').click();await wait(100);
     check('CLI errors remain inside the island with an enabled retry',d.getElementById('terminal-picker-note').textContent.includes('Orca CLI unavailable') && !d.getElementById('terminal-refresh').disabled);
     w.failNavigation=false;w.emptyTerminals=false;w.delayNavigation=200;d.getElementById('terminal-refresh').click();w.IslandPreview.setExpanded(false);await wait(260);

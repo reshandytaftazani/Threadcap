@@ -4,6 +4,12 @@ This file summarizes implemented releases. Detailed verification records remain 
 
 ## Unreleased
 
+- List and link standalone Windows Console windows and accessible Windows Terminal tabs alongside local Orca panes. Confirm foreground focus before dismissing the picker and label window-only navigation explicitly.
+
+- Observe process exit for Codex sessions started with the bundled PowerShell local-client launcher. Archive confirmed exits even when Windows closes the terminal before Codex can send `SessionEnd`.
+
+- Bind OpenCode navigation to live TUI-owned Orca terminals, handle multiple clients without guessing, and reject confirmed closed targets. Preserve Antigravity links across hooks without launch variables and validate their provider revisions. Remove the silent 100-candidate navigation cutoff.
+
 - Open Sessions first when clicking the strip or invoking its hotkey, including pending/completed summaries. Fresh-request auto-open retains its existing preference and interaction protections.
 
 - Add explicit Send for supported OpenCode 2.3.0 questions through a TUI-owned native connector. Preserve single/multiple choices, short-text drafts, terminal fallback, request identity, and honest acknowledgment/error states. Command approvals remain in OpenCode.

@@ -447,7 +447,7 @@
     row.querySelector('.elapsed').textContent = s.elapsed || '';
     const jumpButton = row.querySelector('.jump-button');
     jumpButton.disabled = !terminalAction(s) || terminalBusy;
-    jumpButton.title = preview ? `Preview: open ${s.terminalName || 'terminal'}` : nativeOrca(s) ? terminalBusy ? 'Checking Orca terminal…' : 'Open or link source terminal in Orca' : s.capabilities?.canJump ? `Open ${s.terminalName || 'session terminal'}` : 'Terminal navigation is unavailable for this integration';
+    jumpButton.title = preview ? `Preview: open ${s.terminalName || 'terminal'}` : nativeOrca(s) ? terminalBusy ? 'Checking terminals…' : 'Open or link source terminal' : s.capabilities?.canJump ? `Open ${s.terminalName || 'session terminal'}` : 'Terminal navigation is unavailable for this integration';
     jumpButton.setAttribute('aria-label', jumpButton.title);
     // Stable detail DOM preserves caret and draft on unrelated progress updates.
     const detailSignature = JSON.stringify([s.requestId, s.status, !isPending(s) && state, s.prompt, s.question, s.options, s.command, s.result, s.error, s.capabilities, s.terminalName, s.modelName, openCodeForms.get(requestKey(s))]);
@@ -835,17 +835,23 @@
     finally { terminalBusy = false; updateTerminalBusy(); }
     if (epoch !== terminalEpoch) return;
     if (result?.sessionId === sessionId && result.state === 'opened' && result.acknowledged === true) {
-      leaveSettings(false); setExpanded(false); $('announcer').textContent = 'Orca opened the selected terminal.'; return;
+      leaveSettings(false); setExpanded(false); $('announcer').textContent = 'Source terminal opened.'; return;
     }
-    if (result && (result.sessionId !== sessionId || result.state !== 'choose')) { error = 'Orca did not return a valid navigation result.'; result = null; }
+    if (result && (result.sessionId !== sessionId || result.state !== 'choose')) { error = 'Could not verify the navigation result.'; result = null; }
     terminalChoices = Array.isArray(result?.terminals) ? result.terminals : [];
     terminalPickerSession = sessionId;
     const provider = sessions.find(s => s.sessionId === sessionId)?.agentId || 'codex';
     if (!settingsOpen || providerPage !== provider) openProvider(provider);
     else setSettingsPage('agents');
     $('terminal-picker-note').dataset.error = String(Boolean(error));
-    $('terminal-picker-note').textContent = error || `${result?.message || 'Choose the source terminal to link and open.'}${!terminalChoices.length ? ' No verified local terminals are available. Open one in Orca, then refresh.' : ''}${result?.truncated ? ' The list is incomplete; missing rows are not proof of closure.' : ''}`;
-    $('terminal-choices').innerHTML = terminalChoices.map((terminal, i) => `<button class="terminal-choice" data-terminal-index="${i}"><strong>${esc(terminal.label || 'Codex terminal')}</strong><span>${esc(terminal.path || terminal.binding?.worktree || '')}</span><span>Link and open · ${esc(terminal.choice?.handle || '')}</span></button>`).join('');
+    const guidance = terminalChoices.length ? 'Choose the terminal where you started this session.' : 'No terminal targets found. If this session is an Orca chat, return to it from Orca.';
+    $('terminal-picker-note').textContent = error || `${guidance}${result?.truncated ? ' More Orca terminals may be open.' : ''}`;
+    $('terminal-choices').innerHTML = terminalChoices.map((terminal, i) => {
+      const context = [terminal.host, terminal.path || terminal.binding?.worktree].filter(Boolean).join(' · ');
+      const label = terminal.label || 'Terminal';
+      const action = terminal.actionLabel || 'Link and open';
+      return `<button class="terminal-choice" data-terminal-index="${i}" aria-label="${esc([action, label, context].filter(Boolean).join(', '))}"><strong>${esc(label)}</strong><span>${esc(context)}</span><span>${esc(action)}</span></button>`;
+    }).join('');
     fitSurface(); $('terminal-refresh').focus({ preventScroll: true });
   }
   function markDisconnected() {

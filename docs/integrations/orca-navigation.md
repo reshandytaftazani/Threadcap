@@ -1,4 +1,28 @@
-# Terminal navigation in Orca
+# Source terminal navigation
+
+## Local Windows targets
+
+Open the session's terminal button and choose its source if Threadcap has no verified link.
+
+- Orca uses the verified pane when available. Chat sessions with no terminal pane have no terminal target.
+- PowerShell in the standalone Windows Console window can be linked to that window. The host verifies its handle, owning process, and process creation time, then verifies foreground focus.
+- Windows Terminal offers individual tabs when the tab strip exposes selectable items through Windows accessibility. Threadcap verifies the selected tab in the foreground window. When tabs cannot be inspected, select the window explicitly and switch tabs within Windows Terminal. Entries labeled `Link and open window` only bring the window forward.
+
+Windows links are saved locally across Threadcap restarts and require fresh validation before use. If a tab or window changes or closes, refresh and choose again. Titles and paths are for display. A manually linked window does not establish that closing it ended the CLI session. Remote hosts, terminals embedded in other editors, and exact Windows Terminal split-pane selection are outside this connector.
+
+## Current source, November 17, 2026
+
+The native local Orca connector supports Codex, Antigravity, and OpenCode. Older Codex-only restrictions below are historical. See [current verification](../verification/provider-navigation.md) for hook-fixture versus real-TUI evidence.
+
+- Codex captures safe inherited identity with accepted hook revisions. Later hooks without launch variables retain an existing association while advancing its revision.
+- Antigravity captures identity through its lifecycle observer. Its link revision is checked against the provider cache, independently of Codex.
+- OpenCode captures identity from the TUI lifetime observer, never the persistent server. Native PID and creation time establish a live owner. A single distinct verified owning terminal can be selected automatically. Multiple owners require a choice unless an existing verified link selects one. After that owner exits, a sole remaining verified owner can become the target. A changed PTY incarnation still requires explicit relinking.
+
+Connect the provider in Settings > Agents. Codex hook trust remains manual. The next accepted hook or TUI observation can identify the source terminal. An unbound session requires **Link and open** inside the island; titles, paths, and agent labels never establish ownership. Confirmed closed sessions cannot activate leftover shells. Lists accept up to 10000 entries and disclose truncation. Plain local shells remain selectable when their agent label disappears.
+
+For Orca, switch acknowledgment and a fresh matching active tab and leaf are required. Browser Preview simulates actions. Generic HTTP actions remain disabled.
+
+## Historical implementation
 
 Threadcap 0.8.0 extends the native chooser to all primary providers and local shells, adds recurring pane-presence checks, and verifies active leaf metadata after switching. Existing Codex links are retained even when a later hook lacks inherited environment variables. See [the implementation report](../verification/releases/v0.8.0.md) for restart, reused-PTY, and real-provider limits. Older 0.6.2 behavior below is historical where superseded.
 

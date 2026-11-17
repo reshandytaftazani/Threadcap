@@ -6,6 +6,7 @@ mod codex_setup;
 mod usage;
 mod frame;
 mod navigation;
+mod windows_terminal;
 mod provider_setup;
 mod opencode_lifetime;
 mod opencode_questions;
@@ -88,6 +89,7 @@ async fn orca_terminal(state: State<'_, DesktopState>, navigation: State<'_, nav
     let snapshot=state.store.snapshot();
     let session=snapshot["sessions"].as_array().and_then(|rows|rows.iter().find(|s|s["sessionId"]==session_id));
     if session.is_none(){return Err("Session no longer exists. Refresh the island.".into());}
+    if session.is_some_and(|s|s["terminalStatus"]=="closed" || s["endedAt"].is_number()) {return Err("The source terminal has closed. Open or resume the CLI session before navigating.".into());}
     navigation::execute(&session_id,action,choice,state.port,state.codex_cache.clone()).await
 }
 
@@ -225,6 +227,7 @@ fn main() {
             let codex_cache=std::env::var_os("VIBE_ISLAND_CODEX_STATE_FILE").map(PathBuf::from)
                 .or_else(||if std::env::var("VIBE_ISLAND_STATE_FILE").ok().as_deref()==Some(":memory:") { None } else { vibe_island_codex::state::default_path(port).ok() });
             if let Some(cache)=codex_cache.as_ref() {
+                let _=vibe_island_codex::state::reconcile_clients(cache);
                 let _=vibe_island_codex::providers::reconcile_processes(cache);
                 match vibe_island_codex::state::snapshots(&cache) {
                     Ok(reports)=>for report in reports.into_iter().chain(vibe_island_codex::providers::snapshots(cache).unwrap_or_default()) { if let Err(error)=store.recover(&report) { eprintln!("Could not restore agent context: {error}"); } },
@@ -246,6 +249,9 @@ fn main() {
                     if refresh_pending && refresh_ticks%10==0 {refresh_pending=codex_setup::refresh_staged_helper(port).is_err();}
                     refresh_ticks=refresh_ticks.wrapping_add(1);
                     if let Some(cache)=process_cache.as_ref() {
+                        if let Ok(reports)=vibe_island_codex::state::reconcile_clients(cache) {
+                            for report in reports { let _=process_store.update(&report); }
+                        }
                         if let Ok(reports)=vibe_island_codex::providers::reconcile_processes(cache) {
                             for report in reports { let _=process_store.update(&report); }
                         }

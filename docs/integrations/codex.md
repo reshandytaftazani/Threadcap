@@ -1,5 +1,17 @@
 # Codex CLI bridge
 
+## PowerShell terminal closure
+
+To track closure when the PowerShell window or tab is closed directly, launch Codex from that PowerShell through the bundled local-client script after connecting Codex and reviewing its hooks:
+
+```powershell
+& "$env:LOCALAPPDATA\Vibe Island\start-codex-local.ps1"
+```
+
+From a source checkout, use [the source launcher](../../integrations/codex/start-local.ps1). It accepts `-Resume <session UUID>` and uses Codex's `--no-daemon` mode. The hook helper verifies its Codex process ancestry and records the client PID and creation time with the session update. When that exact process exits, Threadcap archives the session even if `SessionEnd` was never delivered. Task output and pending request context remain in Archive.
+
+Sessions without a captured client identity retain the prior closure behavior. Shared-daemon sessions use lifecycle hooks and any verified Orca pane. The separate [terminal picker](orca-navigation.md#local-windows-targets) can link a standalone console window or a selectable Windows Terminal tab.
+
 Version 0.8.3 uses the encoded PowerShell launcher for all generated Windows observer commands after real outside-workspace runs exposed failures before the native observer started. This supersedes the 0.7.0 direct-invocation optimization below. Register globally, restart an existing CLI, and review changed definitions in `/hooks`; trust is never bypassed. See [diagnosis and real verification](../verification/releases/v0.8.3-provider-monitoring.md#codex-outside-the-application-workspace).
 
 Historical 0.7.0 behavior used the quoted native helper directly for absolute executable paths without CMD-sensitive characters. This optimization is superseded by the encoded launcher above. Both definitions remain recognized as owned during migration; unrelated hooks remain intact. Reconnect after upgrading and manually review changed definitions in Codex. The application does not grant trust. See [roadmap implementation](../verification/releases/v0.7.0.md) for historical measurements and retention/setup behavior.

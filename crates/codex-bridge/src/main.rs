@@ -120,7 +120,12 @@ fn hook(port: u16, state_file: Option<PathBuf>) -> Result<bool> {
         .map(Ok)
         .unwrap_or_else(|| state::default_path(port))?;
     let binding=vibe_island_codex::terminal::Binding::from_lookup(|key| std::env::var(key).ok());
-    let recorded=state::record_with_terminal(&path, &event, binding.as_ref())?;
+    let owner = if std::env::var("THREADCAP_CODEX_LOCAL_CLIENT").as_deref() == Ok("1") {
+        vibe_island_codex::agent_process::capture_ancestor("codex.exe")
+    } else {
+        None
+    };
+    let recorded = state::record_with_terminal(&path, &event, binding.as_ref(), owner.as_ref())?;
     let accepted=recorded.is_some();
     if let Some(report) = recorded {
         // Retrying the exact committed event retains its identity and producer revision.

@@ -1,8 +1,9 @@
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{collections::HashMap, path::PathBuf, process::Stdio, time::Duration};
 use tokio::{io::AsyncReadExt, process::Command, sync::Mutex};
 use vibe_island_codex::terminal::{Binding, Captured};
+use crate::windows_terminal;
 
 #[derive(Default)]
 pub struct NavigationState(pub Mutex<()>);
@@ -13,7 +14,7 @@ pub enum Action {
     List,
     Choose,
 }
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Choice {
     pub handle: String,
@@ -109,7 +110,7 @@ fn terminals(value: &Value) -> Result<Vec<Terminal>, String> {
         .as_array()
         .ok_or("Orca did not report terminals")?;
     let mut result = Vec::new();
-    for row in rows.iter().take(100) {
+    for row in rows.iter().take(10000) {
         if row["connected"] != true
             || row["orphaned"] != false
             || row["executionHostId"] != "local"
@@ -169,7 +170,11 @@ fn links_path(port: u16) -> Result<PathBuf, String> {
         })
         .ok_or("Local application data is unavailable".into())
 }
-fn load_links(path: &PathBuf) -> Result<HashMap<String, Link>, String> {
+fn windows_links_path(port: u16) -> Result<PathBuf, String> {
+    Ok(links_path(port)?.with_file_name(format!("windows-terminal-links-{port}.json")))
+}
+
+fn load_links<T: DeserializeOwned>(path: &PathBuf) -> Result<HashMap<String, T>, String> {
     match std::fs::read(path) {
         Ok(bytes) if bytes.len()<=2_097_152=>serde_json::from_slice(&bytes).map_err(|_|"Saved terminal links are invalid. Preserve the file and repair it before relinking.".into()),
         Ok(_)=>Err("Saved terminal links exceed the supported size.".into()),
@@ -177,10 +182,10 @@ fn load_links(path: &PathBuf) -> Result<HashMap<String, Link>, String> {
         Err(_)=>Err("Could not read saved terminal links.".into()),
     }
 }
-fn save_links(path: &PathBuf, links: &HashMap<String, Link>) -> Result<(), String> {
+fn save_links<T: Serialize>(path: &PathBuf, links: &HashMap<String, T>) -> Result<(), String> {
     let parent = path.parent().ok_or("Terminal link directory unavailable")?;
     std::fs::create_dir_all(parent).map_err(|_| "Could not create terminal link directory")?;
-    let temporary = parent.join(format!(".orca-links-{}.tmp", uuid::Uuid::new_v4()));
+    let temporary = parent.join(format!(".terminal-links-{}.tmp", uuid::Uuid::new_v4()));
     let write: Result<(), &str> = (|| {
         use std::io::Write;
         let bytes = serde_json::to_vec(links).map_err(|_| "Could not encode terminal links")?;
@@ -231,12 +236,17 @@ fn focused_pane(listing: &Value, target: &Terminal) -> bool {
 }
 
 pub fn forget_sessions(port: u16, ids: &[String]) -> Result<(), String> {
-    let path = links_path(port)?;
+    let orca = forget_links::<Link>(&links_path(port)?, ids);
+    let windows = forget_links::<windows_terminal::Target>(&windows_links_path(port)?, ids);
+    orca.and(windows)
+}
+
+fn forget_links<T: DeserializeOwned + Serialize>(path: &PathBuf, ids: &[String]) -> Result<(), String> {
     if !path.is_file() { return Ok(()); }
-    let mut links = load_links(&path)?;
+    let mut links = load_links::<T>(path)?;
     let previous = links.len();
     links.retain(|id,_| !ids.contains(id));
-    if links.len() != previous { save_links(&path, &links)?; }
+    if links.len() != previous { save_links(path, &links)?; }
     Ok(())
 }
 
@@ -247,17 +257,40 @@ pub async fn execute(
     port: u16,
     cache: Option<PathBuf>,
 ) -> Result<Value, String> {
-    let listing = cli(&["terminal", "list", "--limit", "10000"]).await?;
-    let available = terminals(&listing)?;
-    let picker = |message: &str| json!({"state":"choose","sessionId":session,"message":message,"terminals":available,"truncated":listing["result"]["truncated"]==true});
-    if matches!(action, Action::List) {
-        return Ok(picker(
-            "Choose the source terminal for this session. The folder alone is not a verified link.",
-        ));
+    let windows_path = windows_links_path(port)?;
+    let mut window_links = load_links::<windows_terminal::Target>(&windows_path)?;
+    let choose_windows = matches!(action, Action::Choose) && choice.as_ref().is_some_and(|target| target.runtime == "windows");
+    if choose_windows {
+        let choice = choice.as_ref().unwrap();
+        let target = windows_terminal::candidates().await.into_iter()
+            .find(|candidate| candidate.target.choice() == *choice)
+            .ok_or("That terminal changed or closed. Refresh and choose again.")?.target;
+        windows_terminal::open(&target).await?;
+        window_links.insert(session.into(), target);
+        save_links(&windows_path, &window_links)?;
+        return Ok(json!({"state":"opened","sessionId":session,"acknowledged":true}));
     }
+    if matches!(action, Action::Open) {
+        if let Some(target) = window_links.get(session) {
+            if windows_terminal::candidates().await.iter().any(|candidate| &candidate.target == target) {
+                windows_terminal::open(target).await?;
+                return Ok(json!({"state":"opened","sessionId":session,"acknowledged":true}));
+            }
+        }
+    }
+    let listing = cli(&["terminal", "list", "--limit", "10000"]).await;
+    let available = listing.as_ref().ok().and_then(|value| terminals(value).ok()).unwrap_or_default();
+    let truncated = listing.as_ref().is_ok_and(|value| value["result"]["truncated"] == true);
+    if matches!(action, Action::List) {
+        return picker(session, &available, truncated).await;
+    }
+    if matches!(action, Action::Choose) { listing.as_ref().map_err(Clone::clone)?; }
     let path = links_path(port)?;
-    let mut links = load_links(&path)?;
-    let captured: Option<Captured> = cache.and_then(|p| {
+    let mut links = load_links::<Link>(&path)?;
+    let owned = if session.starts_with("opencode:") {
+        cache.as_ref().map(|p|vibe_island_codex::client_presence::terminal_bindings(p,session).map_err(|e|e.to_string())).transpose()?.unwrap_or_default()
+    } else {Vec::new()};
+    let captured: Option<Captured> = cache.as_ref().and_then(|p| {
         vibe_island_codex::terminal::load(&p, session)
             .ok()
             .flatten()
@@ -278,7 +311,7 @@ pub async fn execute(
         .and_then(|link| {
             available
                 .iter()
-                .find(|t| reusable(link, t, captured.as_ref()))
+                .find(|t| reusable(link, t, captured.as_ref()) && (if session.starts_with("opencode:") {owned.contains(&t.binding) || link.manual && owned.is_empty()} else {true}))
         })
         .cloned()
     {
@@ -291,7 +324,10 @@ pub async fn execute(
                         && new.binding.as_ref() != Some(&old.binding)
                 })
         });
-        if let Some(found) = captured
+        let client_target = if owned.len()==1 {
+            available.iter().find(|t|owned.contains(&t.binding) && links.get(session).is_none_or(|old|old.binding!=t.binding || matches(old,t))).cloned()
+        } else {None};
+        if let Some(found) = client_target.or_else(||captured
             .as_ref()
             .filter(|_| may_capture)
             .and_then(|c| {
@@ -299,15 +335,15 @@ pub async fn execute(
                     .iter()
                     .find(|t| c.binding.as_ref() == Some(&t.binding))
             })
-            .cloned()
+            .cloned())
         {
             found
         } else {
-            return Ok(picker("Terminal not linked or no longer verified. Choose its source terminal to link and open."));
+            return picker(session, &available, truncated).await;
         }
     };
-    let manual =
-        matches!(action, Action::Choose) || links.get(session).is_some_and(|old| old.manual);
+    let manual = matches!(action, Action::Choose)
+        || links.get(session).is_some_and(|old| old.manual && old.binding==target.binding);
     links.insert(
         session.into(),
         Link {
@@ -326,24 +362,52 @@ pub async fn execute(
     {
         return Err("The terminal changed before navigation. Refresh and choose again.".into());
     }
+    if !owned.is_empty() && !matches!(action,Action::Choose) && !cache.as_ref().map(|p|vibe_island_codex::client_presence::terminal_bindings(p,session).map(|bindings|bindings.contains(&target.binding))).transpose().map_err(|e|e.to_string())?.unwrap_or(false) {
+        return Err("The OpenCode client changed before navigation. Refresh and choose again.".into());
+    }
     let response = cli(&["terminal", "switch", "--terminal", &target.binding.handle]).await?;
     if !acknowledged(&response, &target) {
         return Err("Orca did not confirm navigation to the selected terminal.".into());
     }
-    let focused = cli(&["terminal", "list", "--limit", "10000", "--include-visual-layouts"]).await?;
-    if !focused_pane(&focused, &target) || !terminals(&focused)?.iter().any(|t|matches(links.get(session).unwrap(),t)) { return Err("Orca opened the tab, but did not confirm the source pane. Retry or select the pane in Orca.".into()); }
+    // Orca can acknowledge switching before its visual layout publishes the active leaf.
+    let confirmed = tokio::time::timeout(Duration::from_secs(3), async {
+        loop {
+            let focused = cli(&["terminal", "list", "--limit", "10000", "--include-visual-layouts"]).await?;
+            if !terminals(&focused)?.iter().any(|t|matches(links.get(session).unwrap(),t)) {
+                return Err("The source terminal changed during navigation.".to_string());
+            }
+            if focused_pane(&focused, &target) {return Ok(());}
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    }).await;
+    match confirmed {
+        Ok(result)=>result?,
+        Err(_)=>return Err("Orca opened the tab, but did not confirm the source pane. Retry or select the pane in Orca.".into()),
+    }
+    if window_links.remove(session).is_some() { save_links(&windows_path, &window_links)?; }
     Ok(json!({"state":"opened","sessionId":session,"acknowledged":true}))
+}
+
+async fn picker(session: &str, orca: &[Terminal], truncated: bool) -> Result<Value, String> {
+    let mut choices = orca.iter().map(|terminal| {
+        let mut choice = json!(terminal);
+        choice["host"] = json!("Orca");
+        choice
+    }).collect::<Vec<_>>();
+    choices.extend(windows_terminal::candidates().await.iter().map(|window| window.display()));
+    Ok(json!({"state":"choose","sessionId":session,"terminals":choices,"truncated":truncated}))
 }
 
 pub async fn reconcile(store: &island_core::Store, port: u16, cache: Option<&PathBuf>) -> Result<(), String> {
     let snapshot = store.snapshot();
     let Some(rows) = snapshot["sessions"].as_array().filter(|rows| !rows.is_empty()) else { return Ok(()); };
-    let links = load_links(&links_path(port)?)?;
+    let links = load_links::<Link>(&links_path(port)?)?;
+    let window_links = load_links::<windows_terminal::Target>(&windows_links_path(port)?)?;
     let listing = cli(&["terminal", "list", "--limit", "10000"]).await;
     let terminals = listing.as_ref().ok().and_then(|value| terminals(value).ok());
     for session in rows {
         let Some(sid) = session["sessionId"].as_str() else { continue; };
-        if session["agentId"]=="opencode" {continue;}
+        if session["agentId"]=="opencode" || window_links.contains_key(sid) {continue;}
         let captured = cache.and_then(|path| vibe_island_codex::terminal::load(path, sid).ok().flatten());
         let saved = links.get(sid);
         let binding = captured.as_ref().and_then(|c| c.binding.as_ref()).or_else(|| saved.map(|link| &link.binding));
@@ -407,6 +471,13 @@ mod tests {
         assert!(acknowledged(&reply, &target));
         reply["result"]["focus"]["navigated"] = json!(false);
         assert!(!acknowledged(&reply, &target));
+    }
+    #[test]
+    fn terminal_lists_do_not_silently_drop_candidates_after_one_hundred() {
+        let mut data=listing();
+        let row=data["result"]["terminals"][0].clone();
+        data["result"]["terminals"]=json!(vec![row;101]);
+        assert_eq!(terminals(&data).unwrap().len(),101);
     }
     #[test]
     fn pane_focus_requires_the_selected_leaf_not_just_the_tab() {

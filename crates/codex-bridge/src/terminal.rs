@@ -110,16 +110,19 @@ pub fn load(path: &Path, session: &str) -> Result<Option<Captured>> {
             |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .optional()?;
-    let latest: Option<String> = db
+    let provider = !session.starts_with("codex:");
+    let table = if provider {"provider_sessions"} else {"codex_sessions"};
+    let table_exists: bool = db.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name=?)",[table],|r|r.get(0))?;
+    let latest: Option<String> = if table_exists { db
         .query_row(
-            "SELECT body FROM codex_sessions WHERE id=?",
+            if provider {"SELECT body FROM provider_sessions WHERE id=?"} else {"SELECT body FROM codex_sessions WHERE id=?"},
             [session],
             |r| r.get(0),
         )
-        .optional()?;
+        .optional()? } else {None};
     let latest = latest
         .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
-        .and_then(|v| v["report"]["sourceRevision"].as_u64());
+        .and_then(|v| if provider {v["sourceRevision"].as_u64()} else {v["report"]["sourceRevision"].as_u64()});
     row.map(|(source_revision, body)| {
         if latest.is_some_and(|revision| revision != source_revision) {
             return Ok(Captured {
@@ -183,5 +186,17 @@ mod tests {
             .binding
             .is_none());
         assert!(load(&path, "codex:missing").unwrap().is_none());
+    }
+    #[test]
+    fn provider_links_require_the_latest_provider_revision() {
+        let directory=tempfile::tempdir().unwrap();let path=directory.path().join("cache.sqlite3");
+        let binding=Binding{handle:"term_provider".into(),pane:"04bca76e-6d9d-4ea1-bebd-d7d9f3f1f51f:214c7188-64f7-4b46-b32c-eab71041a868".into(),workspace:"repo::C:/project".into(),worktree:"repo::C:/project".into(),runtime:"e0eeb80a-c3e2-4b9a-9633-8e50966abd39".into()};
+        save(&path,"antigravity:one",1,&binding).unwrap();
+        let db=crate::state::open(&path).unwrap();
+        db.execute_batch("CREATE TABLE provider_sessions(id TEXT PRIMARY KEY,body TEXT NOT NULL)").unwrap();
+        db.execute("INSERT INTO provider_sessions VALUES(?,?)",params!["antigravity:one",r#"{"sourceRevision":2}"#]).unwrap();
+        assert!(load(&path,"antigravity:one").unwrap().unwrap().binding.is_none());
+        carry_forward(&db,"antigravity:one",2).unwrap();
+        assert_eq!(load(&path,"antigravity:one").unwrap().unwrap().binding,Some(binding));
     }
 }

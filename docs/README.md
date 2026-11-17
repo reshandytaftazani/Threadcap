@@ -22,6 +22,8 @@ Start with the [project README](../README.md) and [getting started](guides/getti
 
 ## Changes and implementation evidence
 
+- [Source-terminal navigation across providers](verification/provider-navigation.md)
+
 - [OpenCode interactive form visibility](verification/opencode-questions.md)
 - [OpenCode direct question replies](verification/opencode-replies.md)
 - [Sessions-first explicit opening](verification/session-opening.md)
