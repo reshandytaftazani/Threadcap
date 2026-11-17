@@ -37,8 +37,10 @@ jobs:
       - name: Build the bundled desktop installer
         run: npm run build
       - name: Stage portable release files
+        if: github.event_name != 'pull_request'
         run: npm run release:stage
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: github.event_name != 'pull_request'
         with:
           name: threadcap-windows-${{ github.ref_name }}
           path: dist/release/

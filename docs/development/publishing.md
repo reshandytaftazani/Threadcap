@@ -34,12 +34,13 @@ gh repo create Threadcap --private --source . --remote origin --push
 gh run list --limit 5
 ```
 
-If the repository already exists, inspect it and use its remote; do not overwrite unrelated history. The Windows workflow runs publication checks, JavaScript/Rust/helper/native unit tests, an installer build, and release staging. Actions are pinned to reviewed commit SHAs. The workflow uploads artifacts and does not create GitHub releases or sign executables.
+If the repository already exists, inspect it and use its remote. The Windows workflow runs publication checks, JavaScript/Rust/helper/native unit tests, and an installer build. Maintainer pushes and manual runs also stage and upload release artifacts. Actions are pinned to reviewed commit SHAs. Release publication and signing remain separate steps.
 
 Inspect the actual GitHub run and download/check its artifact. Local success does not prove GitHub Actions passed. Record the run result in [publication verification](../verification/publication.md).
 
 ## Public launch checklist
 
+- Require a pull request, the GitHub Actions `windows` check, and resolved review conversations before merging into `main`. Keep branch deletion and force pushes blocked. Keep workflow tokens read-only and require a maintainer to approve workflow runs from external forks when the repository goes public.
 - Run a private installer preview with first-time users. Confirm they can use Connect all, complete any provider-required step, and see their first session without guidance. Use the provider versions advertised for the release.
 - At public launch, enable private vulnerability reporting and verify that the reporting route in [SECURITY.md](../../SECURITY.md) is available. It may not be available while the repository is private. See [GitHub's instructions](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository).
 - Enable applicable GitHub secret-scanning/push-protection features and review repository settings. Do not claim these settings are enabled merely because this file exists.
