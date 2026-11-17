@@ -40,7 +40,8 @@ Inspect the actual GitHub run and download/check its artifact. Local success doe
 
 ## Public launch checklist
 
-- Require a pull request, the GitHub Actions `windows` check, and resolved review conversations before merging into `main`. Keep branch deletion and force pushes blocked. Keep workflow tokens read-only and require a maintainer to approve workflow runs from external forks when the repository goes public.
+- Keep `main` updates limited to the repository owner. Contributors submit pull requests for the owner's review. The ruleset requires code-owner approval, the GitHub Actions `windows` check, and resolved review conversations. A changed diff invalidates stale approvals. The owner's account can push directly. Keep force pushes and branch deletion blocked through branch protection.
+- Keep workflow tokens read-only and require a maintainer to approve workflow runs from external forks when the repository goes public.
 - Run a private installer preview with first-time users. Confirm they can use Connect all, complete any provider-required step, and see their first session without guidance. Use the provider versions advertised for the release.
 - At public launch, enable private vulnerability reporting and verify that the reporting route in [SECURITY.md](../../SECURITY.md) is available. It may not be available while the repository is private. See [GitHub's instructions](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository).
 - Enable applicable GitHub secret-scanning/push-protection features and review repository settings. Do not claim these settings are enabled merely because this file exists.
