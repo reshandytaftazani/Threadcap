@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="56" viewBox="0 0 900 31.5">
+  <g transform="translate(241 3.75)" font-family="Verdana, Geneva, sans-serif" font-size="11" text-anchor="middle" fill="#fff">
+    <rect width="92" height="24" rx="4" fill="#434950"/>
+    <path d="M58 0h30a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H58z" fill="#226142"/>
+    <text x="29" y="16">license</text>
+    <text x="75" y="16">MIT</text>
+
+    <g transform="translate(100)">
+      <rect width="156" height="24" rx="4" fill="#434950"/>
+      <path d="M64 0h88a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H64z" fill="#245990"/>
+      <text x="32" y="16">platform</text>
+      <text x="110" y="16">Windows x64</text>
+    </g>
+
+    <g transform="translate(264)">
+      <rect width="154" height="24" rx="4" fill="#434950"/>
+      <path d="M66 0h84a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H66z" fill="#874520"/>
+      <text x="33" y="16">built with</text>
+      <text x="110" y="16">Tauri + Rust</text>
+    </g>
+  </g>
+</svg>

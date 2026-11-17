@@ -1,68 +1,111 @@
-# Threadcap
+# Threadcap · Dynamic Island for Windows
 
-A compact Windows companion for **Codex CLI, Antigravity CLI, and OpenCode CLI**. Keep an eye on coding sessions from a small island attached to the top of your screen.
+![Threadcap app icon](docs/images/readme-logo.svg)
 
-**Windows x64 preview · 0.8.4 baseline**
+> **Threadcap brings Codex CLI, Antigravity CLI, and OpenCode CLI into one island at the top of your screen.** See which agent is working, catch requests for input, and return to its terminal from your Windows desktop.
 
-The current source adds [direct replies to simple OpenCode 2.3.0 questions](docs/verification/opencode-replies.md) and [terminal links for Orca, PowerShell, and Windows Terminal](docs/integrations/orca-navigation.md).
+![MIT License · Windows x64 preview · Built with Tauri and Rust](docs/images/readme-badges.svg)
 
-[Releases](https://github.com/reshandytaftazani/Threadcap/releases) · [Windows build](https://github.com/reshandytaftazani/Threadcap/actions/workflows/windows.yml) · [Report a bug](https://github.com/reshandytaftazani/Threadcap/issues/new/choose)
+[Quick start](#quick-start) · [Roadmap](#roadmap) · [Releases](https://github.com/reshandytaftazani/Threadcap/releases) · [Windows builds](https://github.com/reshandytaftazani/Threadcap/actions/workflows/windows.yml) · [Documentation](docs/README.md)
 
-Threadcap shows session activity, surfaces requests, and keeps account quota separate from task progress.
+---
 
-![Threadcap session overview with synthetic verification sessions](docs/images/session-overview.png)
+## The problem
 
-*Native verification fixture; the sessions above are simulated test data. Real mode starts without demo sessions.*
+With several coding agents running in separate terminals, you have to switch windows to find out which one needs you.
 
-## Install
+- A request can sit unanswered in a background tab while you work in another project.
+- A finished task can be hard to spot among terminals that are still working.
+- After switching projects, you have to find the terminal that already has the context you need.
 
-1. Download `Threadcap_0.8.4_x64-setup.exe` and `SHA256SUMS.txt` from this repository's **Releases**, when a release is available. GitHub Actions also produces downloadable build artifacts; they are separate from published releases.
-2. Check the installer hash against its entry in `SHA256SUMS.txt`:
+## The solution
+
+Threadcap keeps session status in a compact strip attached to the upper edge of the display. Hover to reveal more in the strip, or open it to read session context and act on supported requests.
+
+| What you can do | How it works |
+| --- | --- |
+| **Scan your sessions** | See activity across all three CLIs, with a provider icon and state indicator for each session. |
+| **Catch requests** | Fresh questions and approval requests can open the island without taking focus from your current window. |
+| **Return to a terminal** | Reopen a verified Orca pane or activate a linked PowerShell console or Windows Terminal target. |
+| **Recover context** | Reopen Threadcap to see saved sessions. Confirmed closures move to Archive with their context and CLI history intact. |
+
+## Preview
+
+| Compact strip | Focused question | Session overview |
+| :---: | :---: | :---: |
+| ![Compact Threadcap strip for a running Codex task](docs/images/compact-strip.png) | ![OpenCode question with two choices and an Open terminal button](docs/images/focused-question.png) | ![Expanded Threadcap session list showing Codex, OpenCode, and Antigravity](docs/images/session-overview.png) |
+| Current task at the top edge | Question and next action in context | Activity across connected agents |
+
+*Captured in the Windows app using sample sessions.*
+
+## Development status
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Windows desktop** | x64 preview | The NSIS installer and in-place upgrade were verified on Windows. Broader Windows and display-scaling coverage is pending. |
+| **Provider setup** | Connect all | Batch registration was verified with Codex 0.169.0, Antigravity 1.5.10, and OpenCode 2.3.0 in isolated profiles. |
+| **Live provider checks** | Verified by feature | An isolated OpenCode 2.3.0 server exercised questions and lifecycle events. Authenticated interactive verification for Antigravity 1.5.10 is pending. |
+| **Distribution** | Private preview | The 0.8.4 draft contains the unsigned Windows installer and SHA-256 manifest. First-session onboarding with new users is the public release gate. |
+
+[Capability matrix](docs/guides/capabilities.md) · [Native verification](docs/verification/session-opening.md) · [Roadmap](docs/development/roadmap.md)
+
+## How Threadcap fits a terminal workflow
+
+Use the island to triage concurrent sessions and the source terminal for the full conversation and most decisions. **Ctrl+Alt+Space** opens the overview when the shortcut is available. Clicking the strip opens the overview or goes directly to detail when the only session is Working.
+
+Orca navigation verifies the source pane. For standalone PowerShell and Windows Terminal, link the source explicitly when prompted. Windows Terminal can target an accessible tab or a linked window. [Terminal navigation](docs/integrations/orca-navigation.md)
+
+## How it works
+
+```text
+Codex hooks ─────────┐
+Antigravity hooks ───┼─► Rust observer → Loopback bridge
+OpenCode plugins ────┘                         │
+                                 ┌─────────────┴─────────────┐
+                                 ▼                           ▼
+                           SQLite store             Tauri IPC → Island UI
+```
+
+Provider events update the local Rust session store. The desktop UI loads a snapshot and then receives ordered updates over Tauri IPC. On restart, Threadcap restores saved context and checks each terminal link before offering navigation. [Desktop architecture](docs/architecture/desktop.md) · [Bridge protocol](docs/architecture/bridge-protocol.md)
+
+## Current capabilities
+
+- **Connect all** prepares compatible installed CLIs in one pass. Each provider shows its own result and becomes **Connected** after fresh session activity arrives.
+- **Request handling** supports direct replies to simple OpenCode 2.3.0 questions through the TUI connector. Follow the terminal action for approvals and other requests.
+- **Archive** moves sessions out of the main list after confirmed terminal or CLI closure. A finished task can remain Idle while its terminal is open. [Archive guide](docs/guides/archive.md)
+- **Account quota** shows available Codex and Antigravity readings with freshness labels. [Quota guide](docs/guides/usage.md)
+- **In-island Settings** includes provider setup, appearance, request auto-open, and reduced motion.
+
+## Supported integrations
+
+| Provider | Setup versions | Monitoring and responses |
+| --- | --- | --- |
+| **Codex CLI** | 0.169.0 hook contract | Lifecycle and request hooks. Review the observer in `/hooks` if Codex prompts. Approve and reply in Codex. |
+| **Antigravity CLI** (`agy`) | 1.5.9 and 1.5.10 | Lifecycle hooks and supported status-line quota. Approve and reply in Antigravity. |
+| **OpenCode CLI** | 2.2.7 and 2.3.0 | Server and TUI plugins. The 2.3.0 connector supports replies to simple questions. Use OpenCode for other forms and command approvals. |
+
+## Quick start
+
+### Install on Windows
+
+The preview targets Windows 10 and 11 on x64. It uses Microsoft Edge WebView2, which the installer can fetch if needed. Install and sign in to the CLIs you plan to connect.
+
+1. Get `Threadcap_0.8.4_x64-setup.exe` and `SHA256SUMS.txt` from the private preview package or a Windows workflow artifact. [Windows builds](https://github.com/reshandytaftazani/Threadcap/actions/workflows/windows.yml)
+2. Compare the installer's SHA-256 with the manifest, then run the installer.
 
    ```powershell
    Get-FileHash .\Threadcap_0.8.4_x64-setup.exe -Algorithm SHA256
    ```
 
-3. Run the installer, then start Threadcap. It lives in the tray; closing its window hides it. Choose **Exit** from the tray to quit.
-4. Open the island, then **Settings > Agents**, and select **Connect all** or connect a single CLI.
+3. Open Threadcap from the tray. Go to **Settings → Agents → Connect all** or connect a single provider.
+4. Restart the CLIs you connected. If Codex asks for hook review, open `/hooks` in Codex and review the Threadcap observer.
+5. Open a session or generate new activity. Its provider should move from **Waiting for activity** to **Connected**.
 
-The package targets native Windows x64. Windows 10/11 are the intended platforms; a full Windows-version and display-scaling matrix has not been verified. Microsoft Edge WebView2 is required; the installer can download it if absent. An offline computer needs WebView2 installed beforehand. Rust, Node.js, and Python are not required to run the installed app. Install and sign in to your agent CLIs separately.
+[Setup and troubleshooting](docs/guides/getting-started.md)
 
-## Connect your agents
+### Run from source
 
-| Provider | Verified CLI versions | Setup |
-| --- | --- | --- |
-| Codex CLI | 0.169.0 contract | Restart after setup. If Codex requests review, use `/hooks` to review and trust the Threadcap observer. The compatibility tag is `vibe-island.codex.v1`. |
-| Antigravity CLI | 1.5.9 and 1.5.10 setup | Restart after setup. Threadcap preserves existing status-line output and disabled preferences. |
-| OpenCode CLI | 2.2.7 and 2.3.0 registration; real TUI lifetime checked on 2.3.0 | Restart CLI clients after setup to load the TUI observer. The shared server may remain running. |
-
-Registration does not prove live monitoring. Open a new session or generate fresh activity and check that it appears. Threadcap never grants Codex hook trust automatically. Version gates can reject an unverified CLI while preserving its configuration.
-
-See [setup and troubleshooting](docs/guides/getting-started.md), [Codex setup](docs/integrations/codex.md), and [provider verification](docs/verification/releases/v0.8.3-provider-monitoring.md).
-
-## Everyday use
-
-- **Hover** widens the strip horizontally; click opens the session view.
-- **Settings** stays inside the island, with Agents, Appearance, and Behavior pages.
-- **Requests** can reveal automatically without taking OS focus; this is configurable.
-- **Archive** holds sessions whose terminal or CLI end is confirmed. Closure moves them out of the main list immediately for every provider. Completion or lost connectivity alone does not establish closure.
-- **Terminal navigation** returns to a verified local Orca pane or a Windows terminal you link. Choose a standalone PowerShell console, an accessible Windows Terminal tab, or a Windows Terminal window.
-- **Reduced motion** removes geometric transitions and avatar loops while keeping status visible.
-
-## Capability boundaries
-
-| Capability | Codex | Antigravity | OpenCode |
-| --- | --- | --- | --- |
-| Session/activity monitoring | Hooks, after trust review | Lifecycle hooks | Server and TUI plugins |
-| Closure evidence | Session-end hooks, verified Orca pane, or [local-client launcher](docs/integrations/codex.md#powershell-terminal-closure) | Exact CLI process or verified Orca pane | Last verified owning TUI client exits |
-| Account quota | Read-only account snapshot | Official CLI status-line payload | Unavailable |
-| Approve or answer inside Threadcap | Use the terminal | Use the terminal | Current source can answer supported 2.3.0 questions. Use the terminal for command approvals and other forms. |
-
-Quota is shared account information, not per-session progress. Account-to-session mapping remains unverified. Stale or unavailable data is labeled. Native pane navigation, live-provider checks, and fixtures have different verification scopes; see [current capabilities and evidence](docs/guides/capabilities.md).
-
-## Build from source
-
-Install Git, Node.js 24, MSVC Rust, Visual Studio C++ Build Tools with a Windows SDK, and WebView2. See [Tauri's Windows prerequisites](https://v2.tauri.app/start/prerequisites/). Development and CI use Rust 1.100.0; older toolchains have not been established as supported.
+Use Git, Node.js 24, Rust 1.100.0 with MSVC, Visual Studio C++ Build Tools with a Windows SDK, and WebView2. Choose **Quit** from the tray before starting development mode, which uses the normal data directory and loopback port by default. [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
 
 ```powershell
 git clone https://github.com/reshandytaftazani/Threadcap.git
@@ -71,7 +114,7 @@ npm.cmd ci
 npm.cmd run dev
 ```
 
-To test and create release files:
+### Test and build the installer
 
 ```powershell
 npm.cmd run check:publication
@@ -82,22 +125,63 @@ npm.cmd run build
 npm.cmd run release:stage
 ```
 
-The installer is built under `src-tauri/target/release/bundle/nsis/`; `dist/` receives the installer, helper, guides, notices, and checksums. Close the installed app before running development mode: both use the normal local data and port by default. Never run the legacy Python bridge alongside the native host.
+The NSIS installer builds under `src-tauri/target/release/bundle/nsis/`. Staging collects the installer, helper, guides, notices, and checksums into `dist/release/<version>/`. [Native test guide](tests/native/README.md) · [Release preparation](docs/development/publishing.md)
 
-Browser Preview is separate: run `npm.cmd run preview` with Python installed and open `http://127.0.0.1:4173/?preview=1`. Its sessions and decisions are simulated. It does not verify native focus, window regions, or agent integration.
+## Repository layout
 
-## Documentation and contributions
+| Path | Role |
+| --- | --- |
+| [`src/`](src/) | Island UI, animation, and session presentation |
+| [`src-tauri/`](src-tauri/) | Windows windowing, tray, shortcuts, native IPC, and installer |
+| [`crates/island-core/`](crates/island-core/) | Session ordering, persistence, and loopback transport |
+| [`crates/codex-bridge/`](crates/codex-bridge/) | Bundled observer, provider registration, and local cache |
+| [`integrations/`](integrations/) | Provider observers, plugins, and launchers |
+| [`tests/`](tests/) and [`docs/`](docs/) | Verification fixtures, user guides, and implementation notes |
 
-The source is grouped into `src` (UI), `src-tauri` (Windows host), `crates` (Rust libraries), `integrations` (CLI observers), and `tests`. Historical prototypes live in `legacy`. See [repository layout and naming](docs/development/repository-layout.md).
+## Who is Threadcap for?
 
-- [Documentation index](docs/README.md) · [Changelog](CHANGELOG.md) · [Roadmap](docs/development/roadmap.md)
-- [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [Release preparation](docs/development/publishing.md)
-- [Design](design.md) · [Agent instructions](AGENTS.md) · [Native architecture](docs/architecture/desktop.md)
+Threadcap is for Windows developers who keep multiple coding sessions open and want to spot the next request without inspecting each terminal. It also gives contributors a small Tauri and Rust codebase for studying local session aggregation and native window behavior.
 
-Bug reports should include the app/CLI versions, terminal host, reproduction steps, and a sanitized screenshot or log. Please remove prompts, tokens, account identifiers, and personal paths before sharing. Use the repository's issue templates for ordinary bugs; follow the security policy for vulnerabilities.
+## Roadmap
 
-## License and acknowledgments
+### Before the public preview
 
-Threadcap's original code and documentation use the [MIT license](LICENSE). Provider marks and third-party materials retain their own terms; see [third-party notices](THIRD_PARTY_NOTICES.md) and [icon provenance](docs/design/agent-icons.md). No provider endorsement is claimed.
+- **Test first-time setup.** Watch new users go from **Connect all** to their first visible session without guidance. Use their feedback to improve provider-specific steps and recovery when setup fails.
+- **Verify Antigravity end to end.** Test a signed-in `agy` 1.5.10 session from startup through a turn, quota reporting, and exit.
+- **Expand Windows validation.** Check mixed-DPI displays, larger text, taskbar placement, and fullscreen behavior. Retest focus, outside-click dismissal, and terminal return on the supported hosts.
 
-[Vibe Island](https://github.com/vibeislandapp/vibe-island) informs the visual direction; [EchoIsland](https://github.com/FunplayAI/EchoIsland) informs Windows aggregation ideas. Reference-app proprietary assets are not redistributed.
+### Next development priorities
+
+- **Measure and reduce session latency.** Trace provider events from observer startup to the first visible update. Use the measurements to prioritize bottlenecks and check for dropped or delayed events.
+- **Harden terminal recovery.** Expand restart and closure checks across Orca, standalone PowerShell, and Windows Terminal. Revalidate a terminal before reusing its link.
+- **Improve state readability.** Test pixel indicators and transitions at actual strip size. Check that Working, input, approval, and completion remain easy to distinguish with reduced motion enabled.
+
+[Detailed roadmap](docs/development/roadmap.md) · [Public launch checklist](docs/development/publishing.md#public-launch-checklist)
+
+## FAQ
+
+### Does Threadcap need an account?
+
+Threadcap stores session context on your machine and uses local transport for provider observations. Sign in to each CLI through its own provider.
+
+### Why does an agent show Waiting for activity?
+
+Threadcap has registered the integration. Restart the CLI, complete any provider-required review, and open a session or send a prompt. The first fresh event changes the provider to **Connected**.
+
+### Does Archive delete my terminal history?
+
+Threadcap Archive retains the session context in its own local store. CLI history stays with the provider, even if you later delete the archived copy in Threadcap.
+
+### What if I only want to inspect the UI?
+
+Run `npm.cmd run preview` with Python installed and open `http://127.0.0.1:4173/?preview=1`. The browser preview uses simulated sessions and decisions.
+
+## Maintainer and contributions
+
+Threadcap is maintained by [reshandytaftazani](https://github.com/reshandytaftazani). For a bug report, include the Threadcap and CLI versions, terminal host, and reproduction steps. Remove prompts, credentials, account details, and personal paths from screenshots or logs. [Issue templates](https://github.com/reshandytaftazani/Threadcap/issues/new/choose) · [Contributing](CONTRIBUTING.md) · [Security reporting](SECURITY.md)
+
+## References and license
+
+[Vibe Island](https://github.com/vibeislandapp/vibe-island) informs the visual direction. [EchoIsland](https://github.com/FunplayAI/EchoIsland/) informs Windows session aggregation and the structure of this README.
+
+Threadcap's original code and documentation are licensed under MIT. Provider marks and other third-party materials retain their own terms. [License](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Icon sources](docs/design/agent-icons.md)
