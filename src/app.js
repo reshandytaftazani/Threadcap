@@ -195,7 +195,8 @@
         const pose = priority.find(value => rows.some(row => presentation.compactState(row,offline) === value)) || 'idle';
         return avatar.render(id, pose, true);
       }).join('')
-      : s ? avatar.render(s.agentId, state, false, !preview && silentPoses.has(`${s.sessionId}:${s.status}`)) : '<span class="application-mark" aria-hidden="true"></span>';
+      : s ? avatar.render(s.agentId, state, false, !preview && silentPoses.has(`${s.sessionId}:${s.status}`))
+      : !offline && sessions.length === 0 ? $('idle-pager').innerHTML : '<span class="application-mark" aria-hidden="true"></span>';
     // Avoid restarting sprite loops for unrelated updates.
     if ($('compact-avatars').dataset.signature !== compactAvatar) {
       setAvatars($('compact-avatars'), compactAvatar); $('compact-avatars').dataset.signature = compactAvatar;

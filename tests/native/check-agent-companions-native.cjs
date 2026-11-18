@@ -7,7 +7,7 @@ const crypto = require('node:crypto');
 (async () => {
   const root = path.resolve(__dirname, '../..');
   const exe = process.env.VIBE_ISLAND_TEST_EXE || path.join(root, 'src-tauri/target/release/vibe-island.exe');
-  for (const file of ['src/avatars.js', 'src/island.css', 'src/app.js']) {
+  for (const file of ['src/avatars.js', 'src/island.css', 'src/app.js', 'src/index.html']) {
     if (fs.statSync(exe).mtimeMs < fs.statSync(path.join(root, file)).mtimeMs) {
       throw Error(`Rebuild the native host before testing: ${file} is newer than the executable.`);
     }
@@ -28,12 +28,32 @@ const crypto = require('node:crypto');
     h.on('Runtime.exceptionThrown', event => errors.push(event.exceptionDetails.text));
     h.on('Runtime.consoleAPICalled', event => { if (event.type === 'error') errors.push('Console error'); });
     await h.send('Runtime.enable');
+    await h.evaluate('IslandPreview.setExpanded(false); IslandPreview.setReducedMotion(false)');
+    const eyes = "document.querySelector('#compact-avatars .pager-readout')";
+    check('The empty connected strip shows the 16 DIP Pager beside Idle', await h.until(
+      `${eyes}?.ownerSVGElement.getBoundingClientRect().width === 16 && document.getElementById('compact-title').textContent === 'Idle'`
+    ));
+    check('Only the readout glances one pixel, then returns to rest', await h.evaluate(`(()=>{
+      const eyes = ${eyes}, motion = eyes.getAnimations()[0];
+      if (!motion || eyes.ownerSVGElement.getAnimations({subtree:true}).length !== 1) return false;
+      const at = time => {
+        motion.currentTime = time;
+        return new DOMMatrix(getComputedStyle(eyes).transform).m41;
+      };
+      motion.pause();
+      return at(0) === 0 && at(900) === 1 && at(1300) === 0;
+    })()`));
+    await h.evaluate('IslandPreview.setReducedMotion(true)');
+    check('Reduced motion holds the resting Pager', await h.evaluate(`${eyes}.getAnimations().length === 0 && getComputedStyle(${eyes}).transform === 'none'`));
+    await shot('idle-pager-native.png');
+    await h.evaluate('IslandPreview.setReducedMotion(false)');
     for (const agentId of ['codex', 'antigravity', 'opencode']) {
       await h.inject({agentId, sessionId:`companion-${agentId}`, sourceRevision:1,
         eventId:`companion-${agentId}-1`, status:'running', taskTitle:'Synthetic icon visibility check',
         activity:'Working fixture, no CLI task', eventKind:'activity'});
     }
     check('Three fixture sessions arrive in the current native build', await h.until('IslandPreview.snapshot().sessions.length===3'));
+    check('Provider marks replace Pager when sessions arrive', await h.evaluate(`!${eyes}`));
     await h.evaluate('IslandPreview.setExpanded(false)');
     await h.send('Input.dispatchMouseEvent', {type:'mouseMoved', x:0, y:700});
     await h.wait(600);

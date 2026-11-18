@@ -141,7 +141,7 @@ Separate live session connectivity, retained context, and current task activity.
 
 | Available evidence | Planned compact summary | Hover and opened explanation |
 | --- | --- | --- |
-| No retained sessions | Application mark and `Idle` | Connection/setup context when relevant |
+| Connected bridge, no sessions in the overview | Pager and `Idle` | Connection/setup context when relevant |
 | All retained sessions are disconnected | Provider mark/group and `N saved`, with a quiet disconnected indicator | Explain that these are retained sessions and no live session is connected |
 | Connected and disconnected sessions coexist | Lead with `N live` using the connected count | Show connected and saved counts separately; distinguish working, idle, and completed activity |
 | All sessions are connected | Lead with the live count or the relevant task | Show actual activity and provider context |
@@ -299,7 +299,7 @@ Default to the top center with zero vertical inset. The black surface meets the 
 
 | Mode | Target width | Target height | Content |
 | --- | --- | --- | --- |
-| Idle | 186 DIP | 42 DIP | Small application mark, `Idle`, expand affordance |
+| Empty idle | 186 DIP | 42 DIP | 16 DIP Pager, `Idle`, expand affordance |
 | Single running session | 312 DIP | 42 DIP | Avatar, short task, activity indicator, optional time |
 | Multiple live sessions | 248 DIP | 42 DIP | Up to three static provider marks, live count, one aggregate status |
 | Saved sessions | 208 DIP | 42 DIP | Static provider marks, retained count, quiet connection indicator |
@@ -343,7 +343,7 @@ Clicking the main strip or invoking its hotkey opens the Sessions overview witho
 
 ### Idle and horizontal hover reveal
 
-- With no active sessions, show the application mark and `Idle`. Do not truncate `No active sessions` into `No active s…`, or use a provider mark to imply that an agent is active. Retained offline sessions remain available through explicit opening.
+- When the bridge is connected and the overview is empty, show Pager beside `Idle`. Its two eyes glance one pixel to the right for 440 ms once per 11-second cycle. Pause the glance while the strip is hidden. Reduced motion shows the resting pose. Hover keeps the same character and height. A listed session carries its own provider mark, including after completion cools down to idle. The Edge signal mark identifies the Windows application and serves as the fallback while an empty overview awaits a connection.
 - After `motion.hoverIntent`, widen the existing strip around its fixed top-center anchor. Preserve its current height, attached upper edge, logo size, and text size. Reveal information through available horizontal space, not a dropdown or another surface.
 - Keep the current representative session stable while the pointer or keyboard focus is within the strip. Show its provider identity, more task context, and up to two real quota windows. For a multi-session summary, retain the total count and attention cue while identifying the provider whose quota is shown. Never rotate providers automatically during inspection.
 - Example format: `[Codex] task context · 5h 65% · 7d 40%`. Percentages mean remaining quota. The example is notation, not a fixture for live mode; period labels come from actual data. Meaning remains available in the accessible description and opened view.
@@ -645,7 +645,7 @@ Each primary integration has its avatar, full name, setup state, and connection 
 
 | Condition | Copy and action |
 | --- | --- |
-| No active sessions | Compact: application mark and `Idle`; widened/opened: connection context and `Connect` |
+| Connected bridge, empty overview | Compact shows Pager and `Idle`. Widening or opening reveals connection context. |
 | CLI not detected | `Codex CLI not detected` / `Connection guide` |
 | Bridge disconnected | `Connection lost. Reconnecting...` / `Retry` |
 | Monitoring only | `Respond in your terminal` / `Open terminal` |
@@ -734,7 +734,7 @@ The historical Antigravity transcript-reading plan is an integration hypothesis.
 ## 19. Acceptance criteria
 
 - [ ] Compact and expanded modes read as one continuous surface.
-- [ ] Idle uses the application mark and `Idle`; no truncated empty-state sentence or false provider activity appears.
+- [ ] A connected, empty overview shows Pager beside `Idle`. Listed sessions retain their provider marks.
 - [ ] Hover widens only the strip: height is unchanged and no session body, dropdown, or Settings opens.
 - [ ] Pointer intent, exit grace, re-entry, keyboard focus, and clicks during widening settle at the latest valid presentation without flicker or focus theft.
 - [ ] Vibe Island informs the visual quality: black surface, small pixel avatars, flat rows, quiet metadata, restrained utility controls.

@@ -9,6 +9,7 @@
   --hover-intent: 180ms; --hover-exit: 220ms; --peek-width: 220ms; --page: 260ms;
   --weight-summary: 500; --weight-task: 560; --group-gap: 8px; --row-space: 10px;
   --idle-codex: 11s; --idle-antigravity: 13s; --idle-opencode: 9s;
+  --idle-pager: 11s;
   --avatar-width: 32px;
   font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
   font-size: 12px; -webkit-font-smoothing: antialiased;
@@ -35,6 +36,9 @@ svg.icon { width: 16px; height: 16px; fill: currentColor; stroke: none; flex-shr
 .compact-usage { display: none; color: var(--secondary); font-size: 11px; white-space: nowrap; flex-shrink: 0; }
 .island-surface[data-peek='true'] .compact-usage { display: inline; animation: horizontal-context var(--fast) var(--ease-content) both; }
 .application-mark { width: 16px; height: 16px; display: inline-block; background: url('assets/island-app.svg') center / contain no-repeat; flex-shrink: 0; }
+.pager-readout { animation: pager-glance var(--idle-pager) step-end infinite; }
+@keyframes pager-glance { 0%, 11%, 100% { transform: translateX(0); } 7% { transform: translateX(1px); } }
+body.page-hidden .pager-readout { animation-play-state: paused; }
 @keyframes horizontal-context { from { opacity: 0; } to { opacity: 1; } }
 body.bezel .island-anchor { position: fixed; top: 0; left: 0; right: 0; padding-top: 0; }
 body.bezel .island-surface { border-top: 0; border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; box-shadow: 0 8px 20px #0003; }

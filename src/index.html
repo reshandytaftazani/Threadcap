@@ -14,6 +14,17 @@
   <script src="app.js" defer></script>
 </head>
 <body class="bezel">
+  <template id="idle-pager">
+    <svg width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true" focusable="false">
+      <path fill="#90bdff" d="M3 1h2v4H3z"/>
+      <path fill="#527cb9" d="M10 3h2v1h2v2h1v5h-2v2h-2v1H4v-2h6z"/>
+      <path fill="#85b3fc" d="M2 4h10v1h1v7h-1v1H3v-1H2z"/>
+      <path fill="#21304b" d="M3 6h9v4H3z"/>
+      <path class="pager-readout" fill="#bddbff" d="M4 7h2v2H4zM8 7h2v2H8z"/>
+      <path fill="#476da6" d="M4 11h4v1H4zM10 11h2v1h-2z"/>
+      <path fill="#a6ccff" d="M3 13h3v2H2v-1h1zM9 13h2v1h1v1H9z"/>
+    </svg>
+  </template>
   <main class="island-anchor">
     <section id="island-surface" class="island-surface" data-expanded="false" data-focused="false" aria-label="Agent sessions">
       <button id="compact-view" class="compact-view" aria-label="Expand sessions" aria-expanded="true" tabindex="-1" inert>

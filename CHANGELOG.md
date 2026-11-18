@@ -4,6 +4,7 @@ This file summarizes implemented releases. Detailed verification records remain 
 
 ## Unreleased
 
+- Show Pager beside `Idle` when the bridge is connected and the session list is empty. Its eyes glance once every 11 seconds and stay still with reduced motion.
 - Set up Codex, Antigravity, and OpenCode with one Connect all action. Show individual outcomes and verify each connection with fresh activity. Keep individual setup and Codex's `/hooks` review when required.
 - Accept Antigravity CLI 1.5.10 in desktop setup and the bundled setup helper, alongside 1.5.9.
 - Open the sole Working session on a strip click. Other clicks and the shortcut open the Sessions overview.
